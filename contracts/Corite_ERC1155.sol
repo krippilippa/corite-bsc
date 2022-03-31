@@ -30,6 +30,8 @@ contract Corite_ERC1155 is ERC1155Supply, AccessControl{
 
         uint totalSupply;
         uint minted;
+
+        bool closed;
     }
 
     mapping (address => uint[]) public ownedCollections;
@@ -38,9 +40,9 @@ contract Corite_ERC1155 is ERC1155Supply, AccessControl{
     mapping (address => uint[]) public ownedCampaigns;
     mapping (uint => Campaign) public campaignInfo;
 
-    constructor(IChromiaNetResolver _CNR) ERC1155("") {
+    constructor(IChromiaNetResolver _CNR, address _default_admin_role) ERC1155("") {
         CNR = _CNR;
-        _setupRole(DEFAULT_ADMIN_ROLE, _msgSender());
+        _setupRole(DEFAULT_ADMIN_ROLE, _default_admin_role);
     }
 
     modifier isCREATE_CLOSE_HANDLER(){
@@ -58,10 +60,11 @@ contract Corite_ERC1155 is ERC1155Supply, AccessControl{
         nftCollection++;
         collection = getFullCollectionId(nftCollection);
         ownedCollections[_owner].push(collection);
-        collectionInfo[collection] = Collection({owner: _owner, totalSupply: _totalSupply, minted: collection});
+        collectionInfo[collection] = Collection({owner: _owner, totalSupply: _totalSupply, minted: collection, closed: false});
     }
 
     function mintCollectionBatch(uint _collection, uint _amount, address _to) external isMINTER_BURNER_HANDLER() {
+        require(collectionInfo[_collection].closed == false, "Collection.closed == true");
         require(collectionInfo[_collection].minted + _amount <= collectionInfo[_collection].totalSupply , "Amount exceeds supply");
         for (uint i = 0; i < _amount; i++) {
             collectionInfo[_collection].minted++;
@@ -71,6 +74,7 @@ contract Corite_ERC1155 is ERC1155Supply, AccessControl{
 
     function mintCollectionSingle(uint _collection, address _to) external isMINTER_BURNER_HANDLER() {
         collectionInfo[_collection].minted++;
+        require(collectionInfo[_collection].closed == false, "Collection.closed == true");
         require(collectionInfo[_collection].minted <= collectionInfo[_collection].totalSupply , "Minted exceeds supply");
         _mint(_to, collectionInfo[_collection].minted, 1, "");            
     }
