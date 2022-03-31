@@ -9,7 +9,8 @@ contract Corite_ERC1155 is ERC1155Supply, AccessControl{
 
     IChromiaNetResolver private CNR;
     bytes32 public constant CREATE_CLOSE_HANDLER = keccak256("CREATE_CLOSE_HANDLER");
-    bytes32 public constant MINTER_BURNER_HANDLER = keccak256("MINTER_BURNER_HANDLER");
+    bytes32 public constant MINTER_HANDLER = keccak256("MINTER_HANDLER");
+    bytes32 public constant BURNER_HANDLER = keccak256("BURNER_HANDLER");
     
     uint public nftCollection;
     uint public campaignCount = 1 * (10 ** 68);
@@ -23,6 +24,7 @@ contract Corite_ERC1155 is ERC1155Supply, AccessControl{
         uint maxFundingAllowed;
 
         bool closed;
+        bool cancelled;
     }
 
     struct Collection {
@@ -40,6 +42,11 @@ contract Corite_ERC1155 is ERC1155Supply, AccessControl{
     mapping (address => uint[]) public ownedCampaigns;
     mapping (uint => Campaign) public campaignInfo;
 
+    event CreateCampaignEvent(address owner, uint campaignId);
+    event CreateCollectionEvent(address owner, uint collectionId);
+    event CloseCampaignEvent(uint campaignId);
+    event CancelCampaignEvent(uint campaignId, bool cancelled);
+
     constructor(IChromiaNetResolver _CNR, address _default_admin_role) ERC1155("") {
         CNR = _CNR;
         _setupRole(DEFAULT_ADMIN_ROLE, _default_admin_role);
@@ -50,8 +57,13 @@ contract Corite_ERC1155 is ERC1155Supply, AccessControl{
         _;
     }
 
-    modifier isMINTER_BURNER_HANDLER(){
-        require(hasRole(MINTER_BURNER_HANDLER, msg.sender),"MINTER_BURNER_HANDLER ROLE REQUIRED");
+    modifier isMINTER_HANDLER(){
+        require(hasRole(MINTER_HANDLER, msg.sender),"MINTER_HANDLER ROLE REQUIRED");
+        _;
+    }
+
+    modifier isBURNER_HANDLER(){
+        require(hasRole(BURNER_HANDLER, msg.sender),"BURNER_HANDLER ROLE REQUIRED");
         _;
     }
 
@@ -61,9 +73,10 @@ contract Corite_ERC1155 is ERC1155Supply, AccessControl{
         collection = getFullCollectionId(nftCollection);
         ownedCollections[_owner].push(collection);
         collectionInfo[collection] = Collection({owner: _owner, totalSupply: _totalSupply, minted: collection, closed: false});
+        emit CreateCollectionEvent(_owner, collection);
     }
 
-    function mintCollectionBatch(uint _collection, uint _amount, address _to) external isMINTER_BURNER_HANDLER() {
+    function mintCollectionBatch(uint _collection, uint _amount, address _to) external isMINTER_HANDLER() {
         require(collectionInfo[_collection].closed == false, "Collection.closed == true");
         require(collectionInfo[_collection].minted + _amount <= collectionInfo[_collection].totalSupply , "Amount exceeds supply");
         for (uint i = 0; i < _amount; i++) {
@@ -72,7 +85,7 @@ contract Corite_ERC1155 is ERC1155Supply, AccessControl{
         }
     }
 
-    function mintCollectionSingle(uint _collection, address _to) external isMINTER_BURNER_HANDLER() {
+    function mintCollectionSingle(uint _collection, address _to) external isMINTER_HANDLER() {
         collectionInfo[_collection].minted++;
         require(collectionInfo[_collection].closed == false, "Collection.closed == true");
         require(collectionInfo[_collection].minted <= collectionInfo[_collection].totalSupply , "Minted exceeds supply");
@@ -91,29 +104,36 @@ contract Corite_ERC1155 is ERC1155Supply, AccessControl{
             valuationUSD: _valuationUSD, 
             totalSupply: _totalSupply, 
             maxFundingAllowed: _maxFundingAllowed, 
-            closed: false
+            closed: false,
+            cancelled: false
         });
-
+        emit CreateCampaignEvent(_owner, campaignCount);
         return campaignCount;
     }
 
-    function closeCampaign (uint _campaign) external isCREATE_CLOSE_HANDLER() {
+    function closeCampaign(uint _campaign) external isCREATE_CLOSE_HANDLER() {
         require(campaignInfo[_campaign].totalSupply > 0 , "Campaign does not exist");
         campaignInfo[_campaign].closed = true;
+        emit CloseCampaignEvent(_campaign);
     }
 
-    function mintCampaignShares (uint _campaign, uint _amount, address _to) external isMINTER_BURNER_HANDLER() {
+    function setCampaignCancelled(uint _campaign, bool _cancelled) external isBURNER_HANDLER() {
+        require(campaignInfo[_campaign].totalSupply > 0 , "Campaign does not exist");
+        campaignInfo[_campaign].cancelled = _cancelled;
+        emit CancelCampaignEvent(_campaign, _cancelled);
+    }
+
+    function mintCampaignShares(uint _campaign, uint _amount, address _to) external isMINTER_HANDLER() {
         require(_amount >= (campaignInfo[_campaign].maxFundingAllowed - totalSupply(_campaign)), "Amount exceedes supply");
         require(campaignInfo[_campaign].closed == false, "Campaign.closed == true");
         _mint(_to, _campaign, _amount, "");
     }
 
-    function burnToken(uint256 _fullTokenId, uint256 _amount, address _from) external isMINTER_BURNER_HANDLER() {
+    function burnToken(uint256 _fullTokenId, uint256 _amount, address _from) external isBURNER_HANDLER() {
         require(
             _from == _msgSender() || isApprovedForAll(_from, _msgSender()),
             "ERC1155: caller is not owner nor approved"
         );
-
         _burn(_from, _fullTokenId, _amount);
     }
 
