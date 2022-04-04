@@ -6,6 +6,8 @@ import "@openzeppelin/contracts/access/AccessControl.sol";
 import "interfaces/IChromiaNetResolver.sol";
 
 contract Corite_ERC1155 is ERC1155Supply, AccessControl{
+    string public name = "Corite";
+    string public symbol = "CORITE";
 
     IChromiaNetResolver private CNR;
     bytes32 public constant CREATE_CLOSE_HANDLER = keccak256("CREATE_CLOSE_HANDLER");
@@ -18,10 +20,8 @@ contract Corite_ERC1155 is ERC1155Supply, AccessControl{
     struct Campaign {
         address owner;
 
-        uint valuationUSD;
-
-        uint totalSupply;
-        uint maxFundingAllowed;
+        uint supplyCap;
+        uint toBackersCap;
 
         bool closed;
         bool cancelled;
@@ -53,17 +53,17 @@ contract Corite_ERC1155 is ERC1155Supply, AccessControl{
     }
 
     modifier isCREATE_CLOSE_HANDLER(){
-        require(hasRole(CREATE_CLOSE_HANDLER, msg.sender),"CREATE_CLOSE_HANDLER ROLE REQUIRED");
+        require(hasRole(CREATE_CLOSE_HANDLER, msg.sender),"CREATE_CLOSE_HANDLER role required");
         _;
     }
 
     modifier isMINTER_HANDLER(){
-        require(hasRole(MINTER_HANDLER, msg.sender),"MINTER_HANDLER ROLE REQUIRED");
+        require(hasRole(MINTER_HANDLER, msg.sender),"MINTER_HANDLER role required");
         _;
     }
 
     modifier isBURNER_HANDLER(){
-        require(hasRole(BURNER_HANDLER, msg.sender),"BURNER_HANDLER ROLE REQUIRED");
+        require(hasRole(BURNER_HANDLER, msg.sender),"BURNER_HANDLER role required");
         _;
     }
 
@@ -87,23 +87,22 @@ contract Corite_ERC1155 is ERC1155Supply, AccessControl{
 
     function mintCollectionSingle(uint _collection, address _to) external isMINTER_HANDLER() {
         collectionInfo[_collection].minted++;
-        require(collectionInfo[_collection].closed == false, "Collection.closed == true");
-        require(collectionInfo[_collection].minted <= collectionInfo[_collection].totalSupply , "Minted exceeds supply");
+        require(collectionInfo[_collection].closed == false, "Collection is closed");
+        require(collectionInfo[_collection].minted <= collectionInfo[_collection].totalSupply , "Minting cap reached");
         _mint(_to, collectionInfo[_collection].minted, 1, "");            
     }
 
-    function createCampaign(address _owner, uint _valuationUSD, uint _totalSupply, uint _maxFundingAllowed) external isCREATE_CLOSE_HANDLER() returns(uint){
-        require(_totalSupply > 0 && _maxFundingAllowed > 0, "Cannot creat campaign with 0 shares or 0 allowed to sell");
-        require(_totalSupply >= _maxFundingAllowed , "Supply much be greater or equal to max allowed");
+    function createCampaign(address _owner, uint _supplyCap, uint _toBackersCap) external isCREATE_CLOSE_HANDLER() returns(uint){
+        require(_supplyCap > 0 && _toBackersCap > 0, "Both supplyCap and toBackersCap must be greater than 0");
+        require(_supplyCap >= _toBackersCap , "supplyCap much be greater or equal to toBackersCap");
 
         campaignCount++;
         ownedCampaigns[_owner].push(campaignCount);
 
         campaignInfo[campaignCount] = Campaign({
             owner: _owner, 
-            valuationUSD: _valuationUSD, 
-            totalSupply: _totalSupply, 
-            maxFundingAllowed: _maxFundingAllowed, 
+            supplyCap: _supplyCap, 
+            toBackersCap: _toBackersCap, 
             closed: false,
             cancelled: false
         });
@@ -112,20 +111,20 @@ contract Corite_ERC1155 is ERC1155Supply, AccessControl{
     }
 
     function closeCampaign(uint _campaign) external isCREATE_CLOSE_HANDLER() {
-        require(campaignInfo[_campaign].totalSupply > 0 , "Campaign does not exist");
+        require(campaignInfo[_campaign].supplyCap > 0 , "Campaign does not exist");
         campaignInfo[_campaign].closed = true;
         emit CloseCampaignEvent(_campaign);
     }
 
     function setCampaignCancelled(uint _campaign, bool _cancelled) external isBURNER_HANDLER() {
-        require(campaignInfo[_campaign].totalSupply > 0 , "Campaign does not exist");
+        require(campaignInfo[_campaign].supplyCap > 0 , "Campaign does not exist");
         campaignInfo[_campaign].cancelled = _cancelled;
         emit CancelCampaignEvent(_campaign, _cancelled);
     }
 
     function mintCampaignShares(uint _campaign, uint _amount, address _to) external isMINTER_HANDLER() {
-        require(_amount >= (campaignInfo[_campaign].maxFundingAllowed - totalSupply(_campaign)), "Amount exceedes supply");
-        require(campaignInfo[_campaign].closed == false, "Campaign.closed == true");
+        require(_amount <= (campaignInfo[_campaign].toBackersCap - totalSupply(_campaign)), "Amount exceeds supply");
+        require(campaignInfo[_campaign].closed == false, "Campaign is closed");
         _mint(_to, _campaign, _amount, "");
     }
 
