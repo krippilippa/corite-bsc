@@ -67,7 +67,7 @@ contract Corite_ERC1155 is ERC1155Supply, AccessControl{
         _;
     }
 
-    function createCollection(address _owner, uint _totalSupply) external isCREATE_CLOSE_HANDLER() returns(uint collection) {
+    function createCollection(address _owner, uint _totalSupply) external isCREATE_CLOSE_HANDLER returns(uint collection) {
         require(_totalSupply > 0, "Cap can not be 0");
         nftCollection++;
         collection = getFullCollectionId(nftCollection);
@@ -76,7 +76,7 @@ contract Corite_ERC1155 is ERC1155Supply, AccessControl{
         emit CreateCollectionEvent(_owner, collection);
     }
 
-    function mintCollectionBatch(uint _collection, uint _amount, address _to) external isMINTER_HANDLER() {
+    function mintCollectionBatch(uint _collection, uint _amount, address _to) external isMINTER_HANDLER {
         require(collectionInfo[_collection].closed == false, "Collection.closed == true");
         require(collectionInfo[_collection].minted + _amount <= collectionInfo[_collection].totalSupply , "Amount exceeds supply");
         for (uint i = 0; i < _amount; i++) {
@@ -85,14 +85,14 @@ contract Corite_ERC1155 is ERC1155Supply, AccessControl{
         }
     }
 
-    function mintCollectionSingle(uint _collection, address _to) external isMINTER_HANDLER() {
+    function mintCollectionSingle(uint _collection, address _to) external isMINTER_HANDLER {
         collectionInfo[_collection].minted++;
         require(collectionInfo[_collection].closed == false, "Collection is closed");
         require(collectionInfo[_collection].minted <= collectionInfo[_collection].totalSupply , "Minting cap reached");
         _mint(_to, collectionInfo[_collection].minted, 1, "");            
     }
 
-    function createCampaign(address _owner, uint _supplyCap, uint _toBackersCap) external isCREATE_CLOSE_HANDLER() returns(uint){
+    function createCampaign(address _owner, uint _supplyCap, uint _toBackersCap) external isCREATE_CLOSE_HANDLER returns(uint){
         require(_supplyCap > 0 && _toBackersCap > 0, "Both supplyCap and toBackersCap must be greater than 0");
         require(_supplyCap >= _toBackersCap , "supplyCap much be greater or equal to toBackersCap");
 
@@ -110,25 +110,25 @@ contract Corite_ERC1155 is ERC1155Supply, AccessControl{
         return campaignCount;
     }
 
-    function closeCampaign(uint _campaign) external isCREATE_CLOSE_HANDLER() {
+    function closeCampaign(uint _campaign) external isCREATE_CLOSE_HANDLER {
         require(campaignInfo[_campaign].supplyCap > 0 , "Campaign does not exist");
         campaignInfo[_campaign].closed = true;
         emit CloseCampaignEvent(_campaign);
     }
 
-    function setCampaignCancelled(uint _campaign, bool _cancelled) external isBURNER_HANDLER() {
+    function setCampaignCancelled(uint _campaign, bool _cancelled) external isBURNER_HANDLER {
         require(campaignInfo[_campaign].supplyCap > 0 , "Campaign does not exist");
         campaignInfo[_campaign].cancelled = _cancelled;
         emit CancelCampaignEvent(_campaign, _cancelled);
     }
 
-    function mintCampaignShares(uint _campaign, uint _amount, address _to) external isMINTER_HANDLER() {
-        require(_amount <= (campaignInfo[_campaign].toBackersCap - totalSupply(_campaign)), "Amount exceeds supply");
+    function mintCampaignShares(uint _campaign, uint _amount, address _to) external isMINTER_HANDLER {
+        require(_amount <= (campaignInfo[_campaign].toBackersCap - totalSupply(_campaign)), "Amount exceeds backer supply cap");
         require(campaignInfo[_campaign].closed == false, "Campaign is closed");
         _mint(_to, _campaign, _amount, "");
     }
 
-    function burnToken(uint256 _fullTokenId, uint256 _amount, address _from) external isBURNER_HANDLER() {
+    function burnToken(uint256 _fullTokenId, uint256 _amount, address _from) external isBURNER_HANDLER {
         require(
             _from == _msgSender() || isApprovedForAll(_from, _msgSender()),
             "ERC1155: caller is not owner nor approved"
