@@ -14,7 +14,7 @@ contract Corite_ERC1155 is ERC1155Supply, AccessControl{
     bytes32 public constant MINTER_HANDLER = keccak256("MINTER_HANDLER");
     bytes32 public constant BURNER_HANDLER = keccak256("BURNER_HANDLER");
     
-    uint public nftCollection;
+    uint public latestCollectionId = 2 * (10 ** 68);
     uint public campaignCount = 1 * (10 ** 68);
 
     struct Campaign {
@@ -30,8 +30,8 @@ contract Corite_ERC1155 is ERC1155Supply, AccessControl{
     struct Collection {
         address owner;
 
-        uint totalSupply;
-        uint minted;
+        uint maxTokenId;
+        uint latestTokenId;
 
         bool closed;
     }
@@ -43,9 +43,11 @@ contract Corite_ERC1155 is ERC1155Supply, AccessControl{
     mapping (uint => Campaign) public campaignInfo;
 
     event CreateCampaignEvent(address owner, uint campaignId);
-    event CreateCollectionEvent(address owner, uint collectionId);
     event CloseCampaignEvent(uint campaignId);
     event CancelCampaignEvent(uint campaignId, bool cancelled);
+
+    event CreateCollectionEvent(address owner, uint collectionId);
+    event CloseCollectionEvent(uint collectionId);
 
     constructor(IChromiaNetResolver _CNR, address _default_admin_role) ERC1155("") {
         CNR = _CNR;
@@ -67,29 +69,40 @@ contract Corite_ERC1155 is ERC1155Supply, AccessControl{
         _;
     }
 
-    function createCollection(address _owner, uint _totalSupply) external isCREATE_CLOSE_HANDLER returns(uint collection) {
-        require(_totalSupply > 0, "Cap can not be 0");
-        nftCollection++;
-        collection = getFullCollectionId(nftCollection);
-        ownedCollections[_owner].push(collection);
-        collectionInfo[collection] = Collection({owner: _owner, totalSupply: _totalSupply, minted: collection, closed: false});
-        emit CreateCollectionEvent(_owner, collection);
+    function createCollection(address _owner, uint _totalSupply) external isCREATE_CLOSE_HANDLER returns(uint) {
+        require(_totalSupply > 0, "Minting cap can not be 0");
+        latestCollectionId = latestCollectionId + (10 ** 60);
+        ownedCollections[_owner].push(latestCollectionId);
+        collectionInfo[latestCollectionId] = Collection({
+            owner: _owner, 
+            maxTokenId: latestCollectionId + _totalSupply, 
+            latestTokenId: latestCollectionId, 
+            closed: false
+        });
+        emit CreateCollectionEvent(_owner, latestCollectionId);
+        return latestCollectionId;
     }
 
     function mintCollectionBatch(uint _collection, uint _amount, address _to) external isMINTER_HANDLER {
-        require(collectionInfo[_collection].closed == false, "Collection.closed == true");
-        require(collectionInfo[_collection].minted + _amount <= collectionInfo[_collection].totalSupply , "Amount exceeds supply");
+        require(collectionInfo[_collection].closed == false, "Collection is closed");
+        require(collectionInfo[_collection].latestTokenId + _amount <= collectionInfo[_collection].maxTokenId , "Amount exceeds supply cap");
         for (uint i = 0; i < _amount; i++) {
-            collectionInfo[_collection].minted++;
-            _mint(_to, collectionInfo[_collection].minted, 1, "");            
+            collectionInfo[_collection].latestTokenId++;
+            _mint(_to, collectionInfo[_collection].latestTokenId, 1, "");            
         }
     }
 
     function mintCollectionSingle(uint _collection, address _to) external isMINTER_HANDLER {
-        collectionInfo[_collection].minted++;
+        collectionInfo[_collection].latestTokenId++;
         require(collectionInfo[_collection].closed == false, "Collection is closed");
-        require(collectionInfo[_collection].minted <= collectionInfo[_collection].totalSupply , "Minting cap reached");
-        _mint(_to, collectionInfo[_collection].minted, 1, "");            
+        require(collectionInfo[_collection].latestTokenId <= collectionInfo[_collection].maxTokenId , "Minting cap reached");
+        _mint(_to, collectionInfo[_collection].latestTokenId, 1, "");            
+    }
+
+    function closeCollection(uint _collection) external isCREATE_CLOSE_HANDLER {
+        require(collectionInfo[_collection].maxTokenId > 0 , "Campaign does not exist");
+        collectionInfo[_collection].closed = true;
+        emit CloseCollectionEvent(_collection);
     }
 
     function createCampaign(address _owner, uint _supplyCap, uint _toBackersCap) external isCREATE_CLOSE_HANDLER returns(uint){
@@ -134,10 +147,6 @@ contract Corite_ERC1155 is ERC1155Supply, AccessControl{
             "ERC1155: caller is not owner nor approved"
         );
         _burn(_from, _fullTokenId, _amount);
-    }
-
-    function getFullCollectionId(uint _collection) public pure returns (uint){
-        return (2 * (10 ** 68)) + (_collection * (10 ** 60));
     }
 
     function uri(uint _tokenId) override public view returns (string memory) {
