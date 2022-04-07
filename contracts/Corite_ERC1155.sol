@@ -42,11 +42,11 @@ contract Corite_ERC1155 is ERC1155Supply, AccessControl{
     mapping (address => uint[]) public ownedCampaigns;
     mapping (uint => Campaign) public campaignInfo;
 
-    event CreateCampaignEvent(address owner, uint campaignId);
+    event CreateCampaignEvent(address indexed owner, uint campaignId);
     event CloseCampaignEvent(uint campaignId);
     event CancelCampaignEvent(uint campaignId, bool cancelled);
 
-    event CreateCollectionEvent(address owner, uint collectionId);
+    event CreateCollectionEvent(address indexed owner, uint collectionId);
     event CloseCollectionEvent(uint collectionId);
 
     constructor(IChromiaNetResolver _CNR, address _default_admin_role) ERC1155("") {
@@ -136,8 +136,9 @@ contract Corite_ERC1155 is ERC1155Supply, AccessControl{
     }
 
     function mintCampaignShares(uint _campaign, uint _amount, address _to) external isMINTER_HANDLER {
-        require(_amount <= (campaignInfo[_campaign].toBackersCap - totalSupply(_campaign)), "Amount exceeds backer supply cap");
         require(campaignInfo[_campaign].closed == false, "Campaign is closed");
+        require(campaignInfo[_campaign].cancelled == false, "Campaign is cancelled");
+        require(_amount <= (campaignInfo[_campaign].toBackersCap - totalSupply(_campaign)), "Amount exceeds toBackersCap");
         _mint(_to, _campaign, _amount, "");
     }
 
