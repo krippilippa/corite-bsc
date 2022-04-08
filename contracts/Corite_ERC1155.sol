@@ -1,11 +1,12 @@
 //SPDX-License-Identifier: Unlicense
 pragma solidity ^0.8.4;
+pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Supply.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "interfaces/IChromiaNetResolver.sol";
 
-contract Corite_ERC1155 is ERC1155Supply, AccessControl{
+contract Corite_ERC1155 is ERC1155Supply, AccessControl {
     string public name = "Corite";
     string public symbol = "CORITE";
 
@@ -148,6 +149,14 @@ contract Corite_ERC1155 is ERC1155Supply, AccessControl{
             "ERC1155: caller is not owner nor approved"
         );
         _burn(_from, _fullTokenId, _amount);
+    }
+
+    function getCampaignCount(address _owner) external view returns (uint256) {
+        return ownedCampaigns[_owner].length;
+    }
+
+    function getCollectionCount(address _owner) external view returns (uint256) {
+        return ownedCollections[_owner].length;
     }
 
     function uri(uint _tokenId) override public view returns (string memory) {
