@@ -13,6 +13,8 @@ interface ICorite_ERC1155 {
         view
         returns (uint256[] memory);
 
+    function currentNonce(address _user) external returns (uint256);
+
     function createCampaign(
         address _owner,
         uint256 _supplyCap,
@@ -52,4 +54,6 @@ interface ICorite_ERC1155 {
     function getCampaignCount(address _owner) external view returns (uint256);
 
     function getCollectionCount(address _owner) external view returns (uint256);
+
+    function incrementNonce(address _user) external;
 }

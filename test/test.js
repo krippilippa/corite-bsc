@@ -4,19 +4,19 @@ const help = require("./test-utils.js");
 const firstCampaignId =
   "100000000000000000000000000000000000000000000000000000000000000000001";
 
+var owner, admin, artist, backer, server;
+
 describe("Test create campaign", function () {
   var CNR, corite, CREATE_CLOSE_HANDLER;
 
   beforeEach(async function () {
-    const [owner] = await ethers.getSigners();
+    [owner, admin, artist] = await ethers.getSigners();
     CNR = await help.setCNR();
-    corite = await help.setBaseContract(CNR, owner.address);
+    corite = await help.setStateContract(CNR, owner.address);
     CREATE_CLOSE_HANDLER = await corite.CREATE_CLOSE_HANDLER();
   });
 
   it("should create campaign", async function () {
-    const [owner, admin, artist] = await ethers.getSigners();
-
     await expect(
       corite.connect(admin).createCampaign(artist.address, 1000000, 200000)
     ).to.be.revertedWith("CREATE_CLOSE_HANDLER role required");
@@ -59,9 +59,9 @@ describe("Test campaign functionality", function () {
     BURNER_HANDLER;
 
   beforeEach(async function () {
-    const [owner, admin, artist] = await ethers.getSigners();
+    [owner, admin, artist, backer] = await ethers.getSigners();
     CNR = await help.setCNR();
-    corite = await help.setBaseContract(CNR, owner.address);
+    corite = await help.setStateContract(CNR, owner.address);
 
     CREATE_CLOSE_HANDLER = await corite.CREATE_CLOSE_HANDLER();
     MINTER_HANDLER = await corite.MINTER_HANDLER();
@@ -73,15 +73,13 @@ describe("Test campaign functionality", function () {
   });
 
   it("should mint campaign shares", async function () {
-    const [owner, admin, artist, backer] = await ethers.getSigners();
-
     await expect(
       corite.connect(admin).mintCampaignShares(campaignId, 100, backer.address)
     ).to.be.revertedWith("MINTER_HANDLER role required");
     await corite.connect(owner).grantRole(MINTER_HANDLER, admin.address);
     await expect(
       corite.connect(admin).mintCampaignShares(campaignId, 3000, backer.address)
-    ).to.be.revertedWith("Amount exceeds backer supply cap");
+    ).to.be.revertedWith("Amount exceeds toBackersCap");
 
     expect(await corite.balanceOf(backer.address, campaignId)).to.equal(0);
     await corite
@@ -96,8 +94,6 @@ describe("Test campaign functionality", function () {
   });
 
   it("should close campaign", async function () {
-    const [owner, admin, artist, backer] = await ethers.getSigners();
-
     await expect(
       corite.connect(artist).closeCampaign(campaignId)
     ).to.be.revertedWith("CREATE_CLOSE_HANDLER role required");
@@ -111,8 +107,6 @@ describe("Test campaign functionality", function () {
   });
 
   it("should cancel campaign", async function () {
-    const [owner, admin] = await ethers.getSigners();
-
     await expect(
       corite.connect(admin).setCampaignCancelled(campaignId, true)
     ).to.be.revertedWith("BURNER_HANDLER role required");
@@ -133,8 +127,6 @@ describe("Test campaign functionality", function () {
   });
 
   it("should burn campaign shares", async function () {
-    const [owner, admin, artist, backer] = await ethers.getSigners();
-
     await corite.connect(owner).grantRole(MINTER_HANDLER, admin.address);
     await corite
       .connect(admin)
@@ -159,21 +151,19 @@ describe("Test collections", function () {
     "200000001000000000000000000000000000000000000000000000000000000000000";
 
   beforeEach(async function () {
-    const [owner] = await ethers.getSigners();
+    [owner, admin, artist, backer] = await ethers.getSigners();
     CNR = await help.setCNR();
-    corite = await help.setBaseContract(CNR, owner.address);
+    corite = await help.setStateContract(CNR, owner.address);
     CREATE_CLOSE_HANDLER = await corite.CREATE_CLOSE_HANDLER();
     MINTER_HANDLER = await corite.MINTER_HANDLER();
   });
 
   async function createCollection(amount) {
-    const [owner, admin, artist] = await ethers.getSigners();
     await corite.connect(owner).grantRole(CREATE_CLOSE_HANDLER, admin.address);
     await corite.connect(admin).createCollection(artist.address, amount);
   }
 
   it("should create collection", async function () {
-    const [owner, admin, artist] = await ethers.getSigners();
     await expect(
       corite.connect(admin).createCollection(artist.address, 100)
     ).to.be.revertedWith("CREATE_CLOSE_HANDLER role required");
@@ -199,7 +189,6 @@ describe("Test collections", function () {
   });
 
   it("should mint single token", async function () {
-    const [owner, admin, artist, backer] = await ethers.getSigners();
     await createCollection(1);
     await expect(
       corite
@@ -218,7 +207,6 @@ describe("Test collections", function () {
   });
 
   it("should mint batch", async function () {
-    const [owner, admin, artist, backer] = await ethers.getSigners();
     await createCollection(10);
     await expect(
       corite
@@ -237,7 +225,6 @@ describe("Test collections", function () {
   });
 
   it("should close collection", async function () {
-    const [owner, admin, artist, backer] = await ethers.getSigners();
     await createCollection(10);
     await expect(
       corite.connect(artist).closeCollection(firstCollectionId)
@@ -259,5 +246,48 @@ describe("Test collections", function () {
         .connect(admin)
         .mintCollectionBatch(firstCollectionId, 5, backer.address)
     ).to.be.revertedWith("Collection is closed");
+  });
+});
+
+describe("Test handler", function () {
+  var CNR, corite, handler, CORITE_MINTER, SERVER_SIGNER, GENERAL_HANDLER;
+
+  beforeEach(async function () {
+    [owner, admin, artist, backer, server] = await ethers.getSigners();
+    CNR = await help.setCNR();
+    corite = await help.setStateContract(CNR, owner.address);
+    handler = await help.setHandler(corite, owner.address);
+    GENERAL_HANDLER = await corite.GENERAL_HANDLER();
+    SERVER_SIGNER = await handler.SERVER_SIGNER();
+    CORITE_MINTER = await handler.CORITE_MINTER();
+    await corite.connect(owner).grantRole(GENERAL_HANDLER, handler.address);
+    await handler.connect(owner).grantRole(SERVER_SIGNER, server.address);
+    await handler.connect(owner).grantRole(CORITE_MINTER, admin.address);
+    await handler.connect(admin).createCampaign(artist.address, 10000, 2000);
+    await handler
+      .connect(admin)
+      .mintCampaignShares(firstCampaignId, 200, backer.address);
+    await corite.connect(backer).setApprovalForAll(handler.address, true);
+  });
+
+  it("should burn campaign shares", async function () {
+    const userNonce = await corite.currentNonce(backer.address);
+    const sharesAmount = 200;
+
+    let obj = ethers.utils.defaultAbiCoder.encode(
+      ["address", "uint", "uint", "uint"],
+      [backer.address, firstCampaignId, sharesAmount, userNonce]
+    );
+
+    obj = ethers.utils.arrayify(obj);
+    const prefix = ethers.utils.toUtf8Bytes(
+      "\x19Ethereum Signed Message:\n" + obj.length
+    );
+    const serverSig = await server.signMessage(obj);
+    const { v, r, s } = ethers.utils.splitSignature(serverSig);
+
+    await handler
+      .connect(backer)
+      .burnCampaignShares(firstCampaignId, sharesAmount, prefix, v, r, s);
   });
 });

@@ -9,14 +9,22 @@ async function setCNR() {
   return chromiaNetResolver;
 }
 
-async function setBaseContract(_cnr, _defaultAdmin) {
+async function setStateContract(_cnr, _defaultAdmin) {
   const Contract = await ethers.getContractFactory("Corite_ERC1155");
   const contract = await Contract.deploy(_cnr.address, _defaultAdmin);
   await contract.deployed();
   return contract;
 }
 
+async function setHandler(_stateContract, _defaultAdmin) {
+  const Contract = await ethers.getContractFactory("CoriteHandler");
+  const contract = await Contract.deploy(_stateContract.address, _defaultAdmin);
+  await contract.deployed();
+  return contract;
+}
+
 module.exports = {
   setCNR,
-  setBaseContract,
+  setStateContract,
+  setHandler,
 };

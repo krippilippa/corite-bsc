@@ -11,10 +11,13 @@ contract Corite_ERC1155 is ERC1155Supply, AccessControl {
     string public symbol = "CORITE";
 
     IChromiaNetResolver private CNR;
+
+    bytes32 public constant GENERAL_HANDLER = keccak256("GENERAL_HANDLER");
     bytes32 public constant CREATE_CLOSE_HANDLER = keccak256("CREATE_CLOSE_HANDLER");
     bytes32 public constant MINTER_HANDLER = keccak256("MINTER_HANDLER");
     bytes32 public constant BURNER_HANDLER = keccak256("BURNER_HANDLER");
-    
+    bytes32 public constant NONCE_HANDLER = keccak256("NONCE_HANDLER");
+
     uint public latestCollectionId = 2 * (10 ** 68);
     uint public campaignCount = 1 * (10 ** 68);
 
@@ -43,6 +46,8 @@ contract Corite_ERC1155 is ERC1155Supply, AccessControl {
     mapping (address => uint[]) public ownedCampaigns;
     mapping (uint => Campaign) public campaignInfo;
 
+    mapping(address => uint256) public currentNonce;
+
     event CreateCampaignEvent(address indexed owner, uint campaignId);
     event CloseCampaignEvent(uint campaignId);
     event CancelCampaignEvent(uint campaignId, bool cancelled);
@@ -56,17 +61,22 @@ contract Corite_ERC1155 is ERC1155Supply, AccessControl {
     }
 
     modifier isCREATE_CLOSE_HANDLER(){
-        require(hasRole(CREATE_CLOSE_HANDLER, msg.sender),"CREATE_CLOSE_HANDLER role required");
+        require(hasRole(CREATE_CLOSE_HANDLER, msg.sender) || hasRole(GENERAL_HANDLER, msg.sender), "CREATE_CLOSE_HANDLER role required");
         _;
     }
 
     modifier isMINTER_HANDLER(){
-        require(hasRole(MINTER_HANDLER, msg.sender),"MINTER_HANDLER role required");
+        require(hasRole(MINTER_HANDLER, msg.sender) || hasRole(GENERAL_HANDLER, msg.sender), "MINTER_HANDLER role required");
         _;
     }
 
     modifier isBURNER_HANDLER(){
-        require(hasRole(BURNER_HANDLER, msg.sender),"BURNER_HANDLER role required");
+        require(hasRole(BURNER_HANDLER, msg.sender) || hasRole(GENERAL_HANDLER, msg.sender), "BURNER_HANDLER role required");
+        _;
+    }
+
+     modifier isNONCE_HANDLER() {
+        require(hasRole(NONCE_HANDLER, msg.sender) || hasRole(GENERAL_HANDLER, msg.sender), "NONCE_HANDLER role required");
         _;
     }
 
@@ -149,6 +159,10 @@ contract Corite_ERC1155 is ERC1155Supply, AccessControl {
             "ERC1155: caller is not owner nor approved"
         );
         _burn(_from, _fullTokenId, _amount);
+    }
+
+    function incrementNonce(address _user) external isNONCE_HANDLER {
+        currentNonce[_user]++;
     }
 
     function getCampaignCount(address _owner) external view returns (uint256) {
