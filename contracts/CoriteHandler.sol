@@ -90,7 +90,8 @@ contract CoriteHandler is AccessControl {
     }
 
     function releaseStake(uint _campaignId) public {
-        require(stakeInCampaign[msg.sender][_campaignId].CO > 0);
+        require(campaignStakeInfo[_campaignId].release > block.timestamp, "Can not release before release date");
+        require(stakeInCampaign[msg.sender][_campaignId].CO > 0, "Nothing staked");
         IERC20(CO).transfer(msg.sender, stakeInCampaign[msg.sender][_campaignId].CO);
     }
 
