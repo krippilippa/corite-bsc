@@ -4,6 +4,7 @@ pragma solidity ^0.8.4;
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../interfaces/ICorite_ERC1155.sol";
+import "libraries/LCorite_ERC1155.sol";
 
 contract CoriteHandler is AccessControl {
     bytes32 public constant CORITE_ADMIN = keccak256("CORITE_ADMIN");
@@ -13,8 +14,25 @@ contract CoriteHandler is AccessControl {
 
     ICorite_ERC1155 public coriteState;
     address private coriteAccount;
+    address public CO;
+
+    struct Stake {
+        uint CO;
+        bool used;
+    }
+
+    struct CSInfo{
+        uint start;
+        uint stop;
+        uint end;
+        uint release;
+        uint stakedCOs;
+        uint soldToNonStakers;
+    }
 
     mapping(address => bool) public validToken;
+    mapping(address => mapping(uint => Stake)) public stakeInCampaign;
+    mapping(uint => CSInfo) public campaignStakeInfo; 
 
     event ValidTokenEvent(address indexed tokenAddress, bool valid);
 
@@ -61,6 +79,21 @@ contract CoriteHandler is AccessControl {
         _;
     }
 
+    function stake(uint _campaignId, uint _stakeCO) public {
+        require(campaignStakeInfo[_campaignId].start < block.timestamp && block.timestamp < campaignStakeInfo[_campaignId].stop,
+            "Staking for this campaign is not active");
+
+        IERC20(CO).transferFrom(msg.sender, address(this), _stakeCO);
+
+        stakeInCampaign[msg.sender][_campaignId].CO = stakeInCampaign[msg.sender][_campaignId].CO + _stakeCO;
+        campaignStakeInfo[_campaignId].stakedCOs = campaignStakeInfo[_campaignId].stakedCOs + _stakeCO;
+    }
+
+    function releaseStake(uint _campaignId) public {
+        require(stakeInCampaign[msg.sender][_campaignId].CO > 0);
+        IERC20(CO).transfer(msg.sender, stakeInCampaign[msg.sender][_campaignId].CO);
+    }
+
     function createCampaign(
         address _owner,
         uint256 _supplyCap,
@@ -69,28 +102,28 @@ contract CoriteHandler is AccessControl {
         coriteState.createCampaign(_owner, _supplyCap, _toBackersCap);
     }
 
-    function buyCampaignSharesNative(
-        uint256 _campaignId,
-        uint256 _sharesAmount,
-        bytes calldata _prefix,
-        uint8 _v,
-        bytes32 _r,
-        bytes32 _s
-    ) external payable {
-        bytes memory message = abi.encode(
-            msg.sender,
-            _campaignId,
-            _sharesAmount,
-            msg.value,
-            coriteState.currentNonce(msg.sender)
-        );
+    // function buyCampaignSharesNative(
+    //     uint256 _campaignId,
+    //     uint256 _sharesAmount,
+    //     bytes calldata _prefix,
+    //     uint8 _v,
+    //     bytes32 _r,
+    //     bytes32 _s
+    // ) external payable {
+    //     bytes memory message = abi.encode(
+    //         msg.sender,
+    //         _campaignId,
+    //         _sharesAmount,
+    //         msg.value,
+    //         coriteState.currentNonce(msg.sender)
+    //     );
 
-        bytes32 m = keccak256(abi.encodePacked(_prefix, message));
-        _validateSignature(m, _v, _r, _s);
-        coriteState.incrementNonce(msg.sender);
-        transferNativeToken(coriteAccount, msg.value);
-        coriteState.mintCampaignShares(_campaignId, _sharesAmount, msg.sender);
-    }
+    //     bytes32 m = keccak256(abi.encodePacked(_prefix, message));
+    //     _validateSignature(m, _v, _r, _s);
+    //     coriteState.incrementNonce(msg.sender);
+    //     transferNativeToken(coriteAccount, msg.value);
+    //     coriteState.mintCampaignShares(_campaignId, _sharesAmount, msg.sender);
+    // }
 
     function buyCampaignShares(
         uint256 _campaignId,
@@ -122,37 +155,33 @@ contract CoriteHandler is AccessControl {
         coriteState.mintCampaignShares(_campaignId, _sharesAmount, msg.sender);
     }
 
-    function mintCampaignShares(
-        uint256 _campaignId,
-        uint256 _amount,
-        address _to
-    ) external isCORITE_MINTER {
+    function mintCampaignShares(uint256 _campaignId, uint256 _amount, address _to) external isCORITE_MINTER {
         coriteState.mintCampaignShares(_campaignId, _amount, _to);
     }
 
-    function refundCampaignSharesNative(
-        uint256 _campaignId,
-        uint256 _sharesAmount,
-        uint256 _refundAmount,
-        bytes calldata _prefix,
-        uint8 _v,
-        bytes32 _r,
-        bytes32 _s
-    ) external {
-        bytes memory message = abi.encode(
-            msg.sender,
-            _refundAmount,
-            _campaignId,
-            _sharesAmount,
-            coriteState.currentNonce(msg.sender)
-        );
-        bytes32 m = keccak256(abi.encodePacked(_prefix, message));
-        _validateSignature(m, _v, _r, _s);
+    // function refundCampaignSharesNative(
+    //     uint256 _campaignId,
+    //     uint256 _sharesAmount,
+    //     uint256 _refundAmount,
+    //     bytes calldata _prefix,
+    //     uint8 _v,
+    //     bytes32 _r,
+    //     bytes32 _s
+    // ) external {
+    //     bytes memory message = abi.encode(
+    //         msg.sender,
+    //         _refundAmount,
+    //         _campaignId,
+    //         _sharesAmount,
+    //         coriteState.currentNonce(msg.sender)
+    //     );
+    //     bytes32 m = keccak256(abi.encodePacked(_prefix, message));
+    //     _validateSignature(m, _v, _r, _s);
 
-        coriteState.incrementNonce(msg.sender);
-        coriteState.burnToken(_campaignId, _sharesAmount, msg.sender);
-        transferNativeToken(msg.sender, _refundAmount);
-    }
+    //     coriteState.incrementNonce(msg.sender);
+    //     coriteState.burnToken(_campaignId, _sharesAmount, msg.sender);
+    //     transferNativeToken(msg.sender, _refundAmount);
+    // }
 
     function refundCampaignShares(
         uint256 _campaignId,

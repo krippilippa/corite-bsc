@@ -2,7 +2,10 @@
 pragma solidity ^0.8.4;
 pragma experimental ABIEncoderV2;
 
+import "libraries/LCorite_ERC1155.sol";
+
 interface ICorite_ERC1155 {
+
     function ownedCollections(address _owner)
         external
         view
@@ -56,4 +59,9 @@ interface ICorite_ERC1155 {
     function getCollectionCount(address _owner) external view returns (uint256);
 
     function incrementNonce(address _user) external;
+
+    function campaignInfo(uint _campaignId) external view returns(LCorite_ERC1155.Campaign memory);
+
+    function collectionInfo(uint _campaignId) external view returns(LCorite_ERC1155.Collection memory);
+
 }
