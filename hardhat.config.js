@@ -13,9 +13,13 @@ module.exports = {
   solidity: "0.8.4",
 
   networks: {
+    hardhat: {
+      allowUnlimitedContractSize: true,
+    },
     BSCTestnet: {
       url: `${MORALIS}`,
       accounts: [`0x${BSC_TESTNET_PRIVATE_KEY}`],
+      allowUnlimitedContractSize: true,
     },
   },
   etherscan: {

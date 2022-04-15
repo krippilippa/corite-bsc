@@ -23,8 +23,23 @@ async function setHandler(_stateContract, _defaultAdmin) {
   return contract;
 }
 
+async function setTestCO() {
+  const [owner, admin, artist, backer, server] = await ethers.getSigners();
+
+  const TestCO = await ethers.getContractFactory("TestCO");
+  const testCO = await TestCO.deploy();
+  await testCO.deployed();
+  await testCO.connect(owner).faucet();
+  await testCO.connect(admin).faucet();
+  await testCO.connect(artist).faucet();
+  await testCO.connect(backer).faucet();
+  await testCO.connect(server).faucet();
+  return testCO;
+}
+
 module.exports = {
   setCNR,
   setStateContract,
   setHandler,
+  setTestCO,
 };

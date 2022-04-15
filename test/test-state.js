@@ -1,4 +1,4 @@
-const { expect } = require("chai");
+/* const { expect } = require("chai");
 const { ethers } = require("hardhat");
 const help = require("./test-utils.js");
 const firstCampaignId =
@@ -247,47 +247,4 @@ describe("Test collections", function () {
         .mintCollectionBatch(firstCollectionId, 5, backer.address)
     ).to.be.revertedWith("Collection is closed");
   });
-});
-
-describe("Test handler", function () {
-  var CNR, corite, handler, CORITE_MINTER, SERVER_SIGNER, GENERAL_HANDLER;
-
-  beforeEach(async function () {
-    [owner, admin, artist, backer, server] = await ethers.getSigners();
-    CNR = await help.setCNR();
-    corite = await help.setStateContract(CNR, owner.address);
-    handler = await help.setHandler(corite, owner.address);
-    GENERAL_HANDLER = await corite.GENERAL_HANDLER();
-    SERVER_SIGNER = await handler.SERVER_SIGNER();
-    CORITE_MINTER = await handler.CORITE_MINTER();
-    await corite.connect(owner).grantRole(GENERAL_HANDLER, handler.address);
-    await handler.connect(owner).grantRole(SERVER_SIGNER, server.address);
-    await handler.connect(owner).grantRole(CORITE_MINTER, admin.address);
-    await handler.connect(admin).createCampaign(artist.address, 10000, 2000);
-    await handler
-      .connect(admin)
-      .mintCampaignShares(firstCampaignId, 200, backer.address);
-    await corite.connect(backer).setApprovalForAll(handler.address, true);
-  });
-
-  it("should burn campaign shares", async function () {
-    const userNonce = await corite.currentNonce(backer.address);
-    const sharesAmount = 200;
-
-    let obj = ethers.utils.defaultAbiCoder.encode(
-      ["address", "uint", "uint", "uint"],
-      [backer.address, firstCampaignId, sharesAmount, userNonce]
-    );
-
-    obj = ethers.utils.arrayify(obj);
-    const prefix = ethers.utils.toUtf8Bytes(
-      "\x19Ethereum Signed Message:\n" + obj.length
-    );
-    const serverSig = await server.signMessage(obj);
-    const { v, r, s } = ethers.utils.splitSignature(serverSig);
-
-    await handler
-      .connect(backer)
-      .burnCampaignShares(firstCampaignId, sharesAmount, prefix, v, r, s);
-  });
-});
+}); */

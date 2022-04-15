@@ -26,6 +26,7 @@ contract Corite_ERC1155 is ERC1155Supply, AccessControl {
 
         uint supplyCap;
         uint toBackersCap;
+        bool hasMintedExcess;
 
         bool closed;
         bool cancelled;
@@ -126,7 +127,8 @@ contract Corite_ERC1155 is ERC1155Supply, AccessControl {
         campaignInfo[campaignCount] = Campaign({
             owner: _owner, 
             supplyCap: _supplyCap, 
-            toBackersCap: _toBackersCap, 
+            toBackersCap: _toBackersCap,
+            hasMintedExcess: false,
             closed: false,
             cancelled: false
         });
@@ -149,8 +151,18 @@ contract Corite_ERC1155 is ERC1155Supply, AccessControl {
     function mintCampaignShares(uint _campaign, uint _amount, address _to) external isMINTER_HANDLER {
         require(campaignInfo[_campaign].closed == false, "Campaign is closed");
         require(campaignInfo[_campaign].cancelled == false, "Campaign is cancelled");
-        require(_amount <= (campaignInfo[_campaign].toBackersCap - totalSupply(_campaign)), "Amount exceeds toBackersCap");
+        if(campaignInfo[_campaign].hasMintedExcess == true) {
+            require(_amount <= (campaignInfo[_campaign].supplyCap - totalSupply(_campaign)), "Amount exceeds supplyCap");
+        } else {
+            require(_amount <= (campaignInfo[_campaign].toBackersCap - totalSupply(_campaign)), "Amount exceeds toBackersCap");
+        }
         _mint(_to, _campaign, _amount, "");
+    }
+
+    function mintExcessShares(uint _campaign, address _to) external isMINTER_HANDLER {
+        require(campaignInfo[_campaign].hasMintedExcess == false, "Excess shares already minted");
+        campaignInfo[_campaign].hasMintedExcess = true;
+        _mint(_to, _campaign, campaignInfo[_campaign].supplyCap - campaignInfo[_campaign].toBackersCap, "");
     }
 
     function burnToken(uint256 _fullTokenId, uint256 _amount, address _from) external isBURNER_HANDLER {

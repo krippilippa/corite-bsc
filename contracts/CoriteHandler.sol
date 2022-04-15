@@ -69,10 +69,9 @@ contract CoriteHandler is AccessControl {
         coriteState.createCampaign(_owner, _supplyCap, _toBackersCap);
     }
 
-    function buyCampaignShares(
+    function buyCampaignSharesNative(
         uint256 _campaignId,
         uint256 _sharesAmount,
-        uint256 _price,
         bytes calldata _prefix,
         uint8 _v,
         bytes32 _r,
@@ -82,14 +81,14 @@ contract CoriteHandler is AccessControl {
             msg.sender,
             _campaignId,
             _sharesAmount,
-            _price,
+            msg.value,
             coriteState.currentNonce(msg.sender)
         );
 
         bytes32 m = keccak256(abi.encodePacked(_prefix, message));
         _validateSignature(m, _v, _r, _s);
         coriteState.incrementNonce(msg.sender);
-        sendMsgValue();
+        transferNativeToken(coriteAccount, msg.value);
         coriteState.mintCampaignShares(_campaignId, _sharesAmount, msg.sender);
     }
 
@@ -131,6 +130,30 @@ contract CoriteHandler is AccessControl {
         coriteState.mintCampaignShares(_campaignId, _amount, _to);
     }
 
+    function refundCampaignSharesNative(
+        uint256 _campaignId,
+        uint256 _sharesAmount,
+        uint256 _refundAmount,
+        bytes calldata _prefix,
+        uint8 _v,
+        bytes32 _r,
+        bytes32 _s
+    ) external {
+        bytes memory message = abi.encode(
+            msg.sender,
+            _refundAmount,
+            _campaignId,
+            _sharesAmount,
+            coriteState.currentNonce(msg.sender)
+        );
+        bytes32 m = keccak256(abi.encodePacked(_prefix, message));
+        _validateSignature(m, _v, _r, _s);
+
+        coriteState.incrementNonce(msg.sender);
+        coriteState.burnToken(_campaignId, _sharesAmount, msg.sender);
+        transferNativeToken(msg.sender, _refundAmount);
+    }
+
     function refundCampaignShares(
         uint256 _campaignId,
         uint256 _sharesAmount,
@@ -155,11 +178,7 @@ contract CoriteHandler is AccessControl {
         coriteState.incrementNonce(msg.sender);
 
         coriteState.burnToken(_campaignId, _sharesAmount, msg.sender);
-        IERC20(_tokenAddress).transferFrom(
-            coriteAccount,
-            msg.sender,
-            _tokenAmount
-        );
+        IERC20(_tokenAddress).transfer(msg.sender, _tokenAmount);
     }
 
     function burnCampaignShares(
@@ -178,8 +197,8 @@ contract CoriteHandler is AccessControl {
         );
         bytes32 m = keccak256(abi.encodePacked(_prefix, message));
         _validateSignature(m, _v, _r, _s);
-        coriteState.incrementNonce(msg.sender);
 
+        coriteState.incrementNonce(msg.sender);
         coriteState.burnToken(_campaignId, _sharesAmount, msg.sender);
     }
 
@@ -230,8 +249,9 @@ contract CoriteHandler is AccessControl {
         );
         bytes32 m = keccak256(abi.encodePacked(_prefix, message));
         _validateSignature(m, _v, _r, _s);
+
         coriteState.incrementNonce(msg.sender);
-        sendMsgValue();
+        transferNativeToken(coriteAccount, msg.value);
         _mintCollection(_collection, _amount, msg.sender);
     }
 
@@ -256,6 +276,7 @@ contract CoriteHandler is AccessControl {
         );
         bytes32 m = keccak256(abi.encodePacked(_prefix, message));
         _validateSignature(m, _v, _r, _s);
+
         coriteState.incrementNonce(msg.sender);
         IERC20(_tokenAddress).transferFrom(
             msg.sender,
@@ -309,6 +330,20 @@ contract CoriteHandler is AccessControl {
         coriteAccount = _account;
     }
 
+    function withdrawUnusedTokens(address _tokenAddress)
+        external
+        isDEFAULT_ADMIN
+    {
+        if (_tokenAddress != address(0)) {
+            uint256 balance = IERC20(_tokenAddress).balanceOf(address(this));
+            IERC20(_tokenAddress).transfer(coriteAccount, balance);
+        } else {
+            transferNativeToken(coriteAccount, address(this).balance);
+        }
+    }
+
+    receive() external payable {}
+
     function _checkValidToken(address _tokenAddress) internal view {
         require(validToken[_tokenAddress] == true, "Invalid token address");
     }
@@ -337,8 +372,8 @@ contract CoriteHandler is AccessControl {
         );
     }
 
-    function sendMsgValue() internal {
-        (bool sent, ) = coriteAccount.call{value: msg.value}("");
-        require(sent, "Failed to resend msg value");
+    function transferNativeToken(address _to, uint256 _amount) internal {
+        (bool sent, ) = _to.call{value: _amount}("");
+        require(sent, "Failed to transfer native token");
     }
 }
