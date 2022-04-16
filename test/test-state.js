@@ -1,10 +1,10 @@
-/* const { expect } = require("chai");
+const { expect } = require("chai");
 const { ethers } = require("hardhat");
 const help = require("./test-utils.js");
 const firstCampaignId =
   "100000000000000000000000000000000000000000000000000000000000000000001";
 
-var owner, admin, artist, backer, server;
+var owner, admin, artist, backer;
 
 describe("Test create campaign", function () {
   var CNR, corite, CREATE_CLOSE_HANDLER;
@@ -47,6 +47,7 @@ describe("Test create campaign", function () {
     expect(campaign.toBackersCap).to.equal(200000);
     expect(campaign.closed).to.be.false;
     expect(campaign.cancelled).to.be.false;
+    expect(campaign.hasMintedExcess).to.be.false;
   });
 });
 
@@ -91,6 +92,23 @@ describe("Test campaign functionality", function () {
     await expect(
       corite.connect(admin).mintCampaignShares(campaignId, 100, backer.address)
     ).to.be.revertedWith("Campaign is closed");
+  });
+
+  it("should mint excess shares", async function () {
+    await expect(
+      corite.connect(admin).mintExcessShares(campaignId, owner.address)
+    ).to.be.revertedWith("MINTER_HANDLER role required");
+    await corite.connect(owner).grantRole(MINTER_HANDLER, admin.address);
+    await corite.connect(admin).mintExcessShares(campaignId, backer.address);
+    await expect(
+      corite.connect(admin).mintExcessShares(campaignId, backer.address)
+    ).to.be.revertedWith("Excess shares already minted");
+    await corite
+      .connect(admin)
+      .mintCampaignShares(campaignId, 1000, backer.address);
+    await expect(
+      corite.connect(admin).mintCampaignShares(campaignId, 1001, backer.address)
+    ).to.be.revertedWith("Amount exceeds supplyCap");
   });
 
   it("should close campaign", async function () {
@@ -247,4 +265,4 @@ describe("Test collections", function () {
         .mintCollectionBatch(firstCollectionId, 5, backer.address)
     ).to.be.revertedWith("Collection is closed");
   });
-}); */
+});

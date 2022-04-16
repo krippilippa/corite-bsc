@@ -64,4 +64,6 @@ interface ICorite_ERC1155 {
 
     function collectionInfo(uint _campaignId) external view returns(LCorite_ERC1155.Collection memory);
 
+    function totalSupply(uint256 id) external view returns (uint256);
+
 }

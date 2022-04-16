@@ -151,6 +151,7 @@ contract Corite_ERC1155 is ERC1155Supply, AccessControl {
     function mintCampaignShares(uint _campaign, uint _amount, address _to) external isMINTER_HANDLER {
         require(campaignInfo[_campaign].closed == false, "Campaign is closed");
         require(campaignInfo[_campaign].cancelled == false, "Campaign is cancelled");
+        require(_amount > 0, "Amount can not be 0");
         if(campaignInfo[_campaign].hasMintedExcess == true) {
             require(_amount <= (campaignInfo[_campaign].supplyCap - totalSupply(_campaign)), "Amount exceeds supplyCap");
         } else {
