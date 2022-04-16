@@ -191,7 +191,6 @@ contract CoriteHandler is AccessControl, ReentrancyGuard {
         bytes32 _r,
         bytes32 _s
     ) external {
-        _checkValidToken(_tokenAddress);
         bytes memory message = abi.encode(
             msg.sender,
             _tokenAddress,
