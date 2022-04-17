@@ -1,4 +1,4 @@
-//SPDX-License-Identifier: Unlicense
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.4;
 pragma experimental ABIEncoderV2;
 
@@ -83,7 +83,7 @@ contract Corite_ERC1155 is ERC1155Supply, AccessControl {
 
     function createCollection(address _owner, uint _totalSupply) external isCREATE_CLOSE_HANDLER returns(uint) {
         require(_totalSupply > 0, "Minting cap can not be 0");
-        latestCollectionId = latestCollectionId + (10 ** 60);
+        latestCollectionId += (10 ** 60);
         ownedCollections[_owner].push(latestCollectionId);
         collectionInfo[latestCollectionId] = Collection({
             owner: _owner, 

@@ -1,4 +1,4 @@
-const { expect } = require("chai");
+/* const { expect } = require("chai");
 const { ethers } = require("hardhat");
 const help = require("./test-utils.js");
 const firstCampaignId =
@@ -265,4 +265,4 @@ describe("Test collections", function () {
         .mintCollectionBatch(firstCollectionId, 5, backer.address)
     ).to.be.revertedWith("Collection is closed");
   });
-});
+}); */

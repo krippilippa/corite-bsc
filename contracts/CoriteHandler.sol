@@ -1,5 +1,6 @@
-//SPDX-License-Identifier: Unlicense
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.4;
+pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
@@ -18,25 +19,19 @@ contract CoriteHandler is AccessControl, ReentrancyGuard {
     address private refundAccount;
     address public CO;
 
-    struct Stake {
-        uint CO;
-        bool available;
-    }
-
     struct CSInfo{
         uint start;
         uint stop;
-        uint end;
         uint release;
         uint stakedCOs;
-        uint soldToNonStakers;
     }
 
     mapping(address => bool) public validToken;
-    mapping(address => mapping(uint => Stake)) public stakeInCampaign;
+    mapping(address => mapping(uint => uint)) public stakeInCampaign;
     mapping(uint => CSInfo) public campaignStakeInfo; 
 
     event ValidTokenEvent(address indexed tokenAddress, bool valid);
+    event CampaignStakeInfoEvent(uint indexed campaignId, uint start, uint stop, uint release);
 
     constructor(ICorite_ERC1155 _coriteState, address _defaultAdmin) {
         coriteState = _coriteState;
@@ -81,19 +76,18 @@ contract CoriteHandler is AccessControl, ReentrancyGuard {
         _;
     }
 
-    function registerStakeData(uint _campaignId, uint _start, uint _stop, uint _end, uint _release) external {
+    function registerStakeInfo(uint _campaignId, uint _start, uint _stop, uint _release) external isCORITE_CREATOR {
         require(coriteState.campaignInfo(_campaignId).supplyCap > 0, "Invalid campaign id");
         require(coriteState.totalSupply(_campaignId) == 0, "Can not register stake after minting shares");
-        require(campaignStakeInfo[_campaignId].stakedCOs == 0, "Can not change data after staking has started");
-        require(block.timestamp < _start && _start < _stop && _stop < _end && _end < _release, "Invalid timestamp order");
+        require(campaignStakeInfo[_campaignId].stakedCOs == 0, "Can not change info after staking has started");
+        require(block.timestamp < _start && _start < _stop && _stop < _release, "Invalid timestamp order");
         campaignStakeInfo[_campaignId] = CSInfo({
             start: _start,
             stop: _stop,
-            end: _end,
             release: _release,
-            stakedCOs: 0,
-            soldToNonStakers: 0
+            stakedCOs: 0
         });
+        emit CampaignStakeInfoEvent(_campaignId, _start, _stop, _release);
     }
 
     function stake(uint _campaignId, uint _stakeCO) external {
@@ -101,17 +95,16 @@ contract CoriteHandler is AccessControl, ReentrancyGuard {
             "Staking for this campaign is not active");
 
         IERC20(CO).transferFrom(msg.sender, address(this), _stakeCO);
+        stakeInCampaign[msg.sender][_campaignId] += _stakeCO;
 
-        stakeInCampaign[msg.sender][_campaignId].CO += _stakeCO;
-        stakeInCampaign[msg.sender][_campaignId].available = true;
         campaignStakeInfo[_campaignId].stakedCOs += _stakeCO;
     }
 
-    function releaseStake(uint _campaignId) external nonReentrant() {
-        require(campaignStakeInfo[_campaignId].release < block.timestamp, "Can not release before release date");
-        require(stakeInCampaign[msg.sender][_campaignId].CO > 0, "Nothing staked");
-        IERC20(CO).transfer(msg.sender, stakeInCampaign[msg.sender][_campaignId].CO);
-        stakeInCampaign[msg.sender][_campaignId].CO = 0;
+    function releaseStake(uint _campaignId) external nonReentrant {
+        require(campaignStakeInfo[_campaignId].release < block.timestamp, "Can not release stake before release date");
+        require(stakeInCampaign[msg.sender][_campaignId] > 0, "Nothing staked");
+        IERC20(CO).transfer(msg.sender, stakeInCampaign[msg.sender][_campaignId]);
+        stakeInCampaign[msg.sender][_campaignId] = 0;
     }
 
     function createCampaign(
@@ -144,24 +137,10 @@ contract CoriteHandler is AccessControl, ReentrancyGuard {
         bytes32 m = keccak256(abi.encodePacked(_prefix, message));
         _validateSignature(m, _v, _r, _s);
 
-        if(block.timestamp < campaignStakeInfo[_campaignId].end) {
-            if(stakeInCampaign[msg.sender][_campaignId].available == true) {
-                if(campaignStakeInfo[_campaignId].stakedCOs > coriteState.campaignInfo(_campaignId).toBackersCap) {
-                    require(_sharesAmount == (stakeInCampaign[msg.sender][_campaignId].CO * coriteState.campaignInfo(_campaignId).toBackersCap) 
-                            / campaignStakeInfo[_campaignId].stakedCOs, "Invalid shares amount");
-                } else {
-                    require(_sharesAmount == stakeInCampaign[msg.sender][_campaignId].CO, "Invalid shares amount");
-                }
-                stakeInCampaign[msg.sender][_campaignId].available = false;
-            } else {
-               logNonStakeCampaignTransfer(_campaignId, _sharesAmount);
-            }
-        }
-
         coriteState.incrementNonce(msg.sender);
         if(_tokenAddress == address(0)) {
             require(_tokenAmount == msg.value, "Invalid token amount");
-            transferNativeToken(coriteAccount, msg.value);
+            _transferNativeToken(coriteAccount, msg.value);
         } else {
             _checkValidToken(_tokenAddress);
             IERC20(_tokenAddress).transferFrom(
@@ -175,9 +154,6 @@ contract CoriteHandler is AccessControl, ReentrancyGuard {
 
     function mintCampaignShares(uint256 _campaignId, uint256 _amount, address _to) external isCORITE_MINTER {
         require(campaignStakeInfo[_campaignId].stop < block.timestamp, "Staking phase is not over");
-        if(block.timestamp < campaignStakeInfo[_campaignId].end) {
-           logNonStakeCampaignTransfer(_campaignId, _amount);
-        }
         coriteState.mintCampaignShares(_campaignId, _amount, _to);
     }
 
@@ -205,7 +181,7 @@ contract CoriteHandler is AccessControl, ReentrancyGuard {
 
         coriteState.burnToken(_campaignId, _sharesAmount, msg.sender);
          if(_tokenAddress == address(0)) {
-           transferNativeToken(msg.sender, _tokenAmount);
+           _transferNativeToken(msg.sender, _tokenAmount);
         } else {
             _checkValidToken(_tokenAddress);
             IERC20(_tokenAddress).transferFrom(refundAccount, msg.sender, _tokenAmount);
@@ -241,6 +217,10 @@ contract CoriteHandler is AccessControl, ReentrancyGuard {
         coriteState.setCampaignCancelled(_campaignId, _cancelled);
     }
 
+    function mintExcessShares(uint256 _campaignId, address _to) external isCORITE_ADMIN {
+        coriteState.mintExcessShares(_campaignId, _to);
+    }
+
     function createCollection(
         address _owner,
         uint256 _totalSupply,
@@ -269,7 +249,6 @@ contract CoriteHandler is AccessControl, ReentrancyGuard {
         bytes32 _r,
         bytes32 _s
     ) external payable {
-        _checkValidToken(_tokenAddress);
         bytes memory message = abi.encode(
             msg.sender,
             _collection,
@@ -284,7 +263,7 @@ contract CoriteHandler is AccessControl, ReentrancyGuard {
         coriteState.incrementNonce(msg.sender);
         if(_tokenAddress == address(0)) {
             require(_tokenAmount == msg.value, "Invalid token amount");
-            transferNativeToken(coriteAccount, msg.value);
+            _transferNativeToken(coriteAccount, msg.value);
         } else {
             _checkValidToken(_tokenAddress);
             IERC20(_tokenAddress).transferFrom(msg.sender, coriteAccount, _tokenAmount);
@@ -340,7 +319,7 @@ contract CoriteHandler is AccessControl, ReentrancyGuard {
     }
 
     function withdrawNativeTokens() external isDEFAULT_ADMIN {
-        transferNativeToken(coriteAccount, address(this).balance);
+        _transferNativeToken(coriteAccount, address(this).balance);
     }
 
     receive() external payable {}
@@ -361,13 +340,7 @@ contract CoriteHandler is AccessControl, ReentrancyGuard {
         require(hasRole(SERVER_SIGNER, ecrecover(_m, _v, _r, _s)), "Invalid server signature");
     }
 
-    function logNonStakeCampaignTransfer(uint _campaignId, uint _amount) internal {
-        require( _amount <= coriteState.campaignInfo(_campaignId).toBackersCap 
-                - campaignStakeInfo[_campaignId].stakedCOs - campaignStakeInfo[_campaignId].soldToNonStakers, "No available shares to transfer");
-        campaignStakeInfo[_campaignId].soldToNonStakers += _amount;
-    }
-
-    function transferNativeToken(address _to, uint256 _amount) internal {
+    function _transferNativeToken(address _to, uint256 _amount) internal {
         (bool sent, ) = _to.call{value: _amount}("");
         require(sent, "Failed to transfer native token");
     }
