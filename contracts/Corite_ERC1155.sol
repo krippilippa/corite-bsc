@@ -4,7 +4,7 @@ pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Supply.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
-import "interfaces/IChromiaNetResolver.sol";
+import "../interfaces/IChromiaNetResolver.sol";
 
 contract Corite_ERC1155 is ERC1155Supply, AccessControl {
     string public name = "Corite";
@@ -94,7 +94,7 @@ contract Corite_ERC1155 is ERC1155Supply, AccessControl {
 
     function mintCollectionSingle(uint _collection, address _to) external isMINTER_NONCE_HANDLER {
         _checkCollection(_collection);
-        require(collectionInfo[_collection].latestTokenId <= collectionInfo[_collection].maxTokenId , "Minting cap reached");
+        require(collectionInfo[_collection].latestTokenId < collectionInfo[_collection].maxTokenId , "Minting cap reached");
         collectionInfo[_collection].latestTokenId++;
         _mint(_to, collectionInfo[_collection].latestTokenId, 1, "");            
     }
@@ -148,7 +148,7 @@ contract Corite_ERC1155 is ERC1155Supply, AccessControl {
     }
 
     function mintExcessShares(uint _campaign, address _to) external isMINTER_NONCE_HANDLER {
-        require(campaignInfo[_campaign].hasMintedExcess == false, "Excess shares already minted");
+        require(campaignInfo[_campaign].hasMintedExcess == false || campaignInfo[_campaign].cancelled == false, "Excess shares already minted");
         campaignInfo[_campaign].hasMintedExcess = true;
         _mint(_to, _campaign, campaignInfo[_campaign].supplyCap - campaignInfo[_campaign].toBackersCap, "");
     }
