@@ -4,13 +4,13 @@ pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Supply.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
-import "../interfaces/IChromiaNetResolver.sol";
+import "../interfaces/ICNR.sol";
 
 contract Corite_ERC1155 is ERC1155Supply, AccessControl {
     string public name = "Corite";
     string public symbol = "CORITE";
 
-    IChromiaNetResolver private CNR;
+    ICNR private CNR;
 
     bytes32 public constant CREATE_CLOSE_HANDLER = keccak256("CREATE_CLOSE_HANDLER");
     bytes32 public constant MINTER_NONCE_HANDLER = keccak256("MINTER_NONCE_HANDLER");
@@ -54,7 +54,7 @@ contract Corite_ERC1155 is ERC1155Supply, AccessControl {
     event CreateCollectionEvent(address indexed owner, uint collectionId);
     event CloseCollectionEvent(uint collectionId);
 
-    constructor(IChromiaNetResolver _CNR, address _default_admin_role) ERC1155("") {
+    constructor(ICNR _CNR, address _default_admin_role) ERC1155("") {
         CNR = _CNR;
         _setupRole(DEFAULT_ADMIN_ROLE, _default_admin_role);
     }
@@ -148,7 +148,8 @@ contract Corite_ERC1155 is ERC1155Supply, AccessControl {
     }
 
     function mintExcessShares(uint _campaign, address _to) external isMINTER_NONCE_HANDLER {
-        require(campaignInfo[_campaign].hasMintedExcess == false || campaignInfo[_campaign].cancelled == false, "Excess shares already minted");
+        require(campaignInfo[_campaign].hasMintedExcess == false && campaignInfo[_campaign].cancelled == false, 
+        "Already minted or cancelled");
         campaignInfo[_campaign].hasMintedExcess = true;
         _mint(_to, _campaign, campaignInfo[_campaign].supplyCap - campaignInfo[_campaign].toBackersCap, "");
     }
@@ -176,7 +177,7 @@ contract Corite_ERC1155 is ERC1155Supply, AccessControl {
 
     function uri(uint _tokenId) override public view returns (string memory) {
         require(exists(_tokenId), "ERC1155Metadata: URI query for nonexistent token");
-        return IChromiaNetResolver(CNR).getNFTURI(address(this), _tokenId);
+        return ICNR(CNR).getNFTURI(address(this), _tokenId);
     }
 
     function supportsInterface(bytes4 interfaceId) public view virtual override(ERC1155, AccessControl) returns (bool) {
