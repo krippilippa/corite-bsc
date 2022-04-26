@@ -6,7 +6,6 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../interfaces/ICorite_ERC1155.sol";
-import "libraries/LCorite_ERC1155.sol";
 
 contract CoriteHandler is AccessControl, ReentrancyGuard {
     bytes32 public constant CORITE_ADMIN = keccak256("CORITE_ADMIN");
@@ -278,7 +277,7 @@ contract CoriteHandler is AccessControl, ReentrancyGuard {
         uint8 _v,
         bytes32 _r,
         bytes32 _s
-    ) external payable {
+    ) external {
         bytes memory message = abi.encode(
             msg.sender,
             _collection,
