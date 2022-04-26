@@ -29,8 +29,12 @@ contract CoriteHandler is AccessControl, ReentrancyGuard {
     mapping(address => mapping(uint => uint)) public stakeInCampaign;
     mapping(uint => CSInfo) public campaignStakeInfo; 
 
-    event ValidTokenEvent(address indexed tokenAddress, bool valid);
-    event CampaignStakeInfoEvent(uint indexed campaignId, uint start, uint stop, uint release);
+    event CampaignStakeInfo(uint indexed campaignId, uint start, uint stop, uint release);
+    event ValidToken(address indexed tokenAddress, bool valid);
+    event COToken(address tokenAddress);
+    event RefundAccount(address accountAddress);
+    event CoriteAccount(address accountAddress);
+    event WithdrawNativeTokens(address accountAddress);
 
     constructor(ICorite_ERC1155 _coriteState, address _defaultAdmin) {
         coriteState = _coriteState;
@@ -86,7 +90,7 @@ contract CoriteHandler is AccessControl, ReentrancyGuard {
             release: _release,
             stakedCOs: 0
         });
-        emit CampaignStakeInfoEvent(_campaignId, _start, _stop, _release);
+        emit CampaignStakeInfo(_campaignId, _start, _stop, _release);
     }
 
     function stake(uint _campaignId, uint _stakeCO) external {
@@ -300,25 +304,29 @@ contract CoriteHandler is AccessControl, ReentrancyGuard {
 
     function setValidToken(address _tokenAddress, bool _valid) external isCORITE_ADMIN {
         validToken[_tokenAddress] = _valid;
-        emit ValidTokenEvent(_tokenAddress, _valid);
+        emit ValidToken(_tokenAddress, _valid);
     }
 
     function setCoriteAccount(address _account) external isDEFAULT_ADMIN {
         require(_account != refundAccount, "Can not be same as refund account");
         coriteAccount = _account;
+        emit CoriteAccount(_account);
     }
 
     function setRefundAccount(address _account) external isDEFAULT_ADMIN {
         require(_account != coriteAccount, "Can not be same as corite account");
         refundAccount = _account;
+        emit RefundAccount(_account);
     }
 
     function setCOtoken(address _tokenAddress) external isDEFAULT_ADMIN {
         CO = _tokenAddress;
+        emit COToken(_tokenAddress);
     }
 
     function withdrawNativeTokens() external isDEFAULT_ADMIN {
         _transferNativeToken(coriteAccount, address(this).balance);
+        emit WithdrawNativeTokens(coriteAccount);
     }
 
     receive() external payable {}
