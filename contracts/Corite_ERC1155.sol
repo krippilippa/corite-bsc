@@ -7,8 +7,8 @@ import "@openzeppelin/contracts/access/AccessControl.sol";
 import "../interfaces/ICNR.sol";
 
 contract Corite_ERC1155 is ERC1155Supply, AccessControl {
-    string public name = "Corite";
-    string public symbol = "CORITE";
+    string public name = "Corite Collection";
+    string public symbol = "CO - Collection";
 
     ICNR private CNR;
 
