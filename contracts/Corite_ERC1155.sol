@@ -189,6 +189,6 @@ contract Corite_ERC1155 is ERC1155Supply, AccessControl {
     }
 
     function _checkCampaign(uint _id) internal view {
-        require(campaignInfo[_id].supplyCap > 0 , "Campaign not exist");
+        require(campaignInfo[_id].supplyCap > 0 , "Campaign does not exist");
     }
 }

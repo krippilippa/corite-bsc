@@ -5,9 +5,11 @@ pragma experimental ABIEncoderV2;
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "../interfaces/ICorite_ERC1155.sol";
 
 contract CoriteHandler is AccessControl, ReentrancyGuard {
+    using SafeERC20 for IERC20;
     bytes32 public constant CORITE_ADMIN = keccak256("CORITE_ADMIN");
     bytes32 public constant CORITE_MINTER = keccak256("CORITE_MINTER");
     bytes32 public constant CORITE_CREATOR = keccak256("CORITE_CREATOR");
@@ -18,18 +20,18 @@ contract CoriteHandler is AccessControl, ReentrancyGuard {
     address private refundAccount;
     address public CO;
 
-    struct CSInfo{
-        uint start;
-        uint stop;
-        uint release;
-        uint stakedCOs;
+    struct CSInfo {
+        uint256 start;
+        uint256 stop;
+        uint256 release;
+        uint256 stakedCOs;
     }
 
     mapping(address => bool) public validToken;
-    mapping(address => mapping(uint => uint)) public stakeInCampaign;
-    mapping(uint => CSInfo) public campaignStakeInfo; 
+    mapping(address => mapping(uint256 => uint256)) public stakeInCampaign;
+    mapping(uint256 => CSInfo) public campaignStakeInfo;
 
-    event CampaignStakeInfo(uint indexed campaignId, uint start, uint stop, uint release);
+    event CampaignStakeInfo(uint256 indexed campaignId, uint256 start, uint256 stop, uint256 release);
     event ValidToken(address indexed tokenAddress, bool valid);
     event COToken(address tokenAddress);
     event RefundAccount(address accountAddress);
@@ -79,7 +81,7 @@ contract CoriteHandler is AccessControl, ReentrancyGuard {
         _;
     }
 
-    function registerStakeInfo(uint _campaignId, uint _start, uint _stop, uint _release) external isCORITE_CREATOR {
+    function registerStakeInfo(uint256 _campaignId, uint256 _start, uint256 _stop, uint256 _release) external isCORITE_CREATOR {
         require(coriteState.campaignInfo(_campaignId).supplyCap > 0, "Invalid campaign id");
         require(coriteState.totalSupply(_campaignId) == 0, "Can not register stake after minting shares");
         require(campaignStakeInfo[_campaignId].stakedCOs == 0, "Can not change info after staking has started");
@@ -93,20 +95,22 @@ contract CoriteHandler is AccessControl, ReentrancyGuard {
         emit CampaignStakeInfo(_campaignId, _start, _stop, _release);
     }
 
-    function stake(uint _campaignId, uint _stakeCO) external {
-        require(campaignStakeInfo[_campaignId].start < block.timestamp && block.timestamp < campaignStakeInfo[_campaignId].stop,
+    function stake(uint256 _campaignId, uint256 _stakeCO) external {
+        require(
+            campaignStakeInfo[_campaignId].start < block.timestamp &&
+                block.timestamp < campaignStakeInfo[_campaignId].stop,
             "Staking for this campaign is not active");
 
-        IERC20(CO).transferFrom(msg.sender, address(this), _stakeCO);
+        IERC20(CO).safeTransferFrom(msg.sender, address(this), _stakeCO);
         stakeInCampaign[msg.sender][_campaignId] += _stakeCO;
 
         campaignStakeInfo[_campaignId].stakedCOs += _stakeCO;
     }
 
-    function releaseStake(uint _campaignId) external nonReentrant {
+    function releaseStake(uint256 _campaignId) external nonReentrant {
         require(campaignStakeInfo[_campaignId].release < block.timestamp, "Can not release stake before release date");
         require(stakeInCampaign[msg.sender][_campaignId] > 0, "Nothing staked");
-        IERC20(CO).transfer(msg.sender, stakeInCampaign[msg.sender][_campaignId]);
+        IERC20(CO).safeTransfer(msg.sender, stakeInCampaign[msg.sender][_campaignId]);
         stakeInCampaign[msg.sender][_campaignId] = 0;
     }
 
@@ -141,16 +145,12 @@ contract CoriteHandler is AccessControl, ReentrancyGuard {
         _validateSignature(m, _v, _r, _s);
 
         coriteState.incrementNonce(msg.sender);
-        if(_tokenAddress == address(0)) {
+        if (_tokenAddress == address(0)) {
             require(_tokenAmount == msg.value, "Invalid token amount");
             _transferNativeToken(coriteAccount, msg.value);
         } else {
             _checkValidToken(_tokenAddress);
-            IERC20(_tokenAddress).transferFrom(
-                msg.sender,
-                coriteAccount,
-                _tokenAmount
-            );
+            IERC20(_tokenAddress).safeTransferFrom(msg.sender, coriteAccount, _tokenAmount);
         }
         coriteState.mintCampaignShares(_campaignId, _sharesAmount, msg.sender);
     }
@@ -183,11 +183,11 @@ contract CoriteHandler is AccessControl, ReentrancyGuard {
         coriteState.incrementNonce(msg.sender);
 
         coriteState.burnToken(_campaignId, _sharesAmount, msg.sender);
-         if(_tokenAddress == address(0)) {
-           _transferNativeToken(msg.sender, _tokenAmount);
+        if (_tokenAddress == address(0)) {
+            _transferNativeToken(msg.sender, _tokenAmount);
         } else {
             _checkValidToken(_tokenAddress);
-            IERC20(_tokenAddress).transferFrom(refundAccount, msg.sender, _tokenAmount);
+            IERC20(_tokenAddress).safeTransferFrom(refundAccount, msg.sender, _tokenAmount);
         }
     }
 
@@ -264,12 +264,12 @@ contract CoriteHandler is AccessControl, ReentrancyGuard {
         _validateSignature(m, _v, _r, _s);
 
         coriteState.incrementNonce(msg.sender);
-        if(_tokenAddress == address(0)) {
+        if (_tokenAddress == address(0)) {
             require(_tokenAmount == msg.value, "Invalid token amount");
             _transferNativeToken(coriteAccount, msg.value);
         } else {
             _checkValidToken(_tokenAddress);
-            IERC20(_tokenAddress).transferFrom(msg.sender, coriteAccount, _tokenAmount);
+            IERC20(_tokenAddress).safeTransferFrom(msg.sender, coriteAccount, _tokenAmount);
         }
         _mintCollection(_collection, _amount, msg.sender);
     }

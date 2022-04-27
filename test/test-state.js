@@ -1,8 +1,7 @@
-/* const { expect } = require("chai");
+const { expect } = require("chai");
 const { ethers } = require("hardhat");
 const help = require("./test-utils.js");
-const firstCampaignId =
-  "100000000000000000000000000000000000000000000000000000000000000000001";
+const firstCampaignId = "100000000000000000000000000000000000000000000000000000000000000000001";
 
 var owner, admin, artist, backer;
 
@@ -17,27 +16,21 @@ describe("Test create campaign", function () {
   });
 
   it("should create campaign", async function () {
-    await expect(
-      corite.connect(admin).createCampaign(artist.address, 1000000, 200000)
-    ).to.be.revertedWith("CREATE_CLOSE_HANDLER role required");
+    await expect(corite.connect(admin).createCampaign(artist.address, 1000000, 200000)).to.be.revertedWith(
+      "CREATE_CLOSE_HANDLER role required"
+    );
     await corite.connect(owner).grantRole(CREATE_CLOSE_HANDLER, admin.address);
-    await expect(
-      corite.connect(admin).createCampaign(artist.address, 0, 0)
-    ).to.be.revertedWith(
-      "Both supplyCap and toBackersCap must be greater than 0"
+    await expect(corite.connect(admin).createCampaign(artist.address, 0, 0)).to.be.revertedWith(
+      "supplyCap/toBackersCap must be greater than 0"
     );
-    await expect(
-      corite.connect(admin).createCampaign(artist.address, 10000, 0)
-    ).to.be.revertedWith(
-      "Both supplyCap and toBackersCap must be greater than 0"
+    await expect(corite.connect(admin).createCampaign(artist.address, 10000, 0)).to.be.revertedWith(
+      "supplyCap/toBackersCap must be greater than 0"
     );
-    await expect(
-      corite.connect(admin).createCampaign(artist.address, 10000, 20000)
-    ).to.be.revertedWith("supplyCap much be greater or equal to toBackersCap");
+    await expect(corite.connect(admin).createCampaign(artist.address, 10000, 20000)).to.be.revertedWith(
+      "supplyCap is less than toBackersCap"
+    );
 
-    await expect(
-      corite.connect(admin).createCampaign(artist.address, 1000000, 200000)
-    )
+    await expect(corite.connect(admin).createCampaign(artist.address, 1000000, 200000))
       .to.emit(corite, "CreateCampaignEvent")
       .withArgs(artist.address, ethers.BigNumber.from(firstCampaignId));
 
@@ -52,12 +45,7 @@ describe("Test create campaign", function () {
 });
 
 describe("Test campaign functionality", function () {
-  var CNR,
-    corite,
-    campaignId,
-    CREATE_CLOSE_HANDLER,
-    MINTER_HANDLER,
-    BURNER_HANDLER;
+  var CNR, corite, campaignId, CREATE_CLOSE_HANDLER, MINTER_NONCE_HANDLER, BURNER_HANDLER;
 
   beforeEach(async function () {
     [owner, admin, artist, backer] = await ethers.getSigners();
@@ -65,7 +53,7 @@ describe("Test campaign functionality", function () {
     corite = await help.setStateContract(CNR, owner.address);
 
     CREATE_CLOSE_HANDLER = await corite.CREATE_CLOSE_HANDLER();
-    MINTER_HANDLER = await corite.MINTER_HANDLER();
+    MINTER_NONCE_HANDLER = await corite.MINTER_NONCE_HANDLER();
     BURNER_HANDLER = await corite.BURNER_HANDLER();
 
     await corite.connect(owner).grantRole(CREATE_CLOSE_HANDLER, admin.address);
@@ -74,50 +62,44 @@ describe("Test campaign functionality", function () {
   });
 
   it("should mint campaign shares", async function () {
-    await expect(
-      corite.connect(admin).mintCampaignShares(campaignId, 100, backer.address)
-    ).to.be.revertedWith("MINTER_HANDLER role required");
-    await corite.connect(owner).grantRole(MINTER_HANDLER, admin.address);
-    await expect(
-      corite.connect(admin).mintCampaignShares(campaignId, 3000, backer.address)
-    ).to.be.revertedWith("Amount exceeds toBackersCap");
+    await expect(corite.connect(admin).mintCampaignShares(campaignId, 100, backer.address)).to.be.revertedWith(
+      "MINTER_NONCE_HANDLER role required"
+    );
+    await corite.connect(owner).grantRole(MINTER_NONCE_HANDLER, admin.address);
+    await expect(corite.connect(admin).mintCampaignShares(campaignId, 3000, backer.address)).to.be.revertedWith(
+      "Amount exceeds toBackersCap"
+    );
 
     expect(await corite.balanceOf(backer.address, campaignId)).to.equal(0);
-    await corite
-      .connect(admin)
-      .mintCampaignShares(campaignId, 100, backer.address);
+    await corite.connect(admin).mintCampaignShares(campaignId, 100, backer.address);
     expect(await corite.balanceOf(backer.address, campaignId)).to.equal(100);
 
     await corite.connect(admin).closeCampaign(campaignId);
-    await expect(
-      corite.connect(admin).mintCampaignShares(campaignId, 100, backer.address)
-    ).to.be.revertedWith("Campaign is closed");
+    await expect(corite.connect(admin).mintCampaignShares(campaignId, 100, backer.address)).to.be.revertedWith(
+      "Campaign closed/cancelled"
+    );
   });
 
   it("should mint excess shares", async function () {
-    await expect(
-      corite.connect(admin).mintExcessShares(campaignId, owner.address)
-    ).to.be.revertedWith("MINTER_HANDLER role required");
-    await corite.connect(owner).grantRole(MINTER_HANDLER, admin.address);
+    await expect(corite.connect(admin).mintExcessShares(campaignId, owner.address)).to.be.revertedWith(
+      "MINTER_NONCE_HANDLER role required"
+    );
+    await corite.connect(owner).grantRole(MINTER_NONCE_HANDLER, admin.address);
     await corite.connect(admin).mintExcessShares(campaignId, backer.address);
-    await expect(
-      corite.connect(admin).mintExcessShares(campaignId, backer.address)
-    ).to.be.revertedWith("Excess shares already minted");
-    await corite
-      .connect(admin)
-      .mintCampaignShares(campaignId, 1000, backer.address);
-    await expect(
-      corite.connect(admin).mintCampaignShares(campaignId, 1001, backer.address)
-    ).to.be.revertedWith("Amount exceeds supplyCap");
+    await expect(corite.connect(admin).mintExcessShares(campaignId, backer.address)).to.be.revertedWith(
+      "Already minted or cancelled"
+    );
+    await corite.connect(admin).mintCampaignShares(campaignId, 1000, backer.address);
+    await expect(corite.connect(admin).mintCampaignShares(campaignId, 1001, backer.address)).to.be.revertedWith(
+      "Amount exceeds supplyCap"
+    );
   });
 
   it("should close campaign", async function () {
-    await expect(
-      corite.connect(artist).closeCampaign(campaignId)
-    ).to.be.revertedWith("CREATE_CLOSE_HANDLER role required");
-    await expect(
-      corite.connect(admin).closeCampaign(campaignId + 1)
-    ).to.be.revertedWith("Campaign does not exist");
+    await expect(corite.connect(artist).closeCampaign(campaignId)).to.be.revertedWith(
+      "CREATE_CLOSE_HANDLER role required"
+    );
+    await expect(corite.connect(admin).closeCampaign(campaignId + 1)).to.be.revertedWith("Campaign does not exist");
     await expect(corite.connect(admin).closeCampaign(campaignId))
       .to.emit(corite, "CloseCampaignEvent")
       .withArgs(ethers.BigNumber.from(firstCampaignId));
@@ -125,13 +107,9 @@ describe("Test campaign functionality", function () {
   });
 
   it("should cancel campaign", async function () {
-    await expect(
-      corite.connect(admin).setCampaignCancelled(campaignId, true)
-    ).to.be.revertedWith("BURNER_HANDLER role required");
-    await corite.connect(owner).grantRole(BURNER_HANDLER, admin.address);
-    await expect(
-      corite.connect(admin).setCampaignCancelled(campaignId + 1, true)
-    ).to.be.revertedWith("Campaign does not exist");
+    await expect(corite.connect(admin).setCampaignCancelled(campaignId + 1, true)).to.be.revertedWith(
+      "Campaign does not exist"
+    );
 
     await expect(corite.connect(admin).setCampaignCancelled(campaignId, true))
       .to.emit(corite, "CancelCampaignEvent")
@@ -145,18 +123,16 @@ describe("Test campaign functionality", function () {
   });
 
   it("should burn campaign shares", async function () {
-    await corite.connect(owner).grantRole(MINTER_HANDLER, admin.address);
-    await corite
-      .connect(admin)
-      .mintCampaignShares(campaignId, 100, backer.address);
+    await corite.connect(owner).grantRole(MINTER_NONCE_HANDLER, admin.address);
+    await corite.connect(admin).mintCampaignShares(campaignId, 100, backer.address);
 
-    await expect(
-      corite.connect(admin).burnToken(campaignId, 100, backer.address)
-    ).to.be.revertedWith("BURNER_HANDLER role required");
+    await expect(corite.connect(admin).burnToken(campaignId, 100, backer.address)).to.be.revertedWith(
+      "BURNER_HANDLER role required"
+    );
     await corite.connect(owner).grantRole(BURNER_HANDLER, admin.address);
-    await expect(
-      corite.connect(admin).burnToken(campaignId, 100, backer.address)
-    ).to.be.revertedWith("ERC1155: caller is not owner nor approved");
+    await expect(corite.connect(admin).burnToken(campaignId, 100, backer.address)).to.be.revertedWith(
+      "ERC1155: caller is not owner nor approved"
+    );
     await corite.connect(backer).setApprovalForAll(admin.address, true);
     await corite.connect(admin).burnToken(campaignId, 90, backer.address);
     expect(await corite.balanceOf(backer.address, campaignId)).to.equal(10);
@@ -165,15 +141,14 @@ describe("Test campaign functionality", function () {
 
 describe("Test collections", function () {
   var CNR, corite, CREATE_CLOSE_HANDLER;
-  const firstCollectionId =
-    "200000001000000000000000000000000000000000000000000000000000000000000";
+  const firstCollectionId = "200000001000000000000000000000000000000000000000000000000000000000000";
 
   beforeEach(async function () {
     [owner, admin, artist, backer] = await ethers.getSigners();
     CNR = await help.setCNR();
     corite = await help.setStateContract(CNR, owner.address);
     CREATE_CLOSE_HANDLER = await corite.CREATE_CLOSE_HANDLER();
-    MINTER_HANDLER = await corite.MINTER_HANDLER();
+    MINTER_NONCE_HANDLER = await corite.MINTER_NONCE_HANDLER();
   });
 
   async function createCollection(amount) {
@@ -182,13 +157,11 @@ describe("Test collections", function () {
   }
 
   it("should create collection", async function () {
-    await expect(
-      corite.connect(admin).createCollection(artist.address, 100)
-    ).to.be.revertedWith("CREATE_CLOSE_HANDLER role required");
+    await expect(corite.connect(admin).createCollection(artist.address, 100)).to.be.revertedWith(
+      "CREATE_CLOSE_HANDLER role required"
+    );
     await corite.connect(owner).grantRole(CREATE_CLOSE_HANDLER, admin.address);
-    await expect(
-      corite.connect(admin).createCollection(artist.address, 0)
-    ).to.be.revertedWith("Minting cap can not be 0");
+    await expect(corite.connect(admin).createCollection(artist.address, 0)).to.be.revertedWith("Invalid totalSupply");
     await expect(corite.connect(admin).createCollection(artist.address, 100))
       .to.emit(corite, "CreateCollectionEvent")
       .withArgs(artist.address, ethers.BigNumber.from(firstCollectionId));
@@ -196,73 +169,53 @@ describe("Test collections", function () {
     const collection = await corite.collectionInfo(firstCollectionId);
     expect(collection.owner).to.equal(artist.address);
     expect(collection.maxTokenId).to.equal(
-      ethers.BigNumber.from(
-        "200000001000000000000000000000000000000000000000000000000000000000100"
-      )
+      ethers.BigNumber.from("200000001000000000000000000000000000000000000000000000000000000000100")
     );
-    expect(collection.latestTokenId).to.equal(
-      ethers.BigNumber.from(firstCollectionId)
-    );
+    expect(collection.latestTokenId).to.equal(ethers.BigNumber.from(firstCollectionId));
     expect(collection.closed).to.be.false;
   });
 
   it("should mint single token", async function () {
     await createCollection(1);
-    await expect(
-      corite
-        .connect(admin)
-        .mintCollectionSingle(firstCollectionId, backer.address)
-    ).to.be.revertedWith("MINTER_HANDLER role required");
-    await corite.connect(owner).grantRole(MINTER_HANDLER, admin.address);
-    await corite
-      .connect(admin)
-      .mintCollectionSingle(firstCollectionId, backer.address);
-    await expect(
-      corite
-        .connect(admin)
-        .mintCollectionSingle(firstCollectionId, backer.address)
-    ).to.be.revertedWith("Minting cap reached");
+    await expect(corite.connect(admin).mintCollectionSingle(firstCollectionId, backer.address)).to.be.revertedWith(
+      "MINTER_NONCE_HANDLER role required"
+    );
+    await corite.connect(owner).grantRole(MINTER_NONCE_HANDLER, admin.address);
+    await corite.connect(admin).mintCollectionSingle(firstCollectionId, backer.address);
+    await expect(corite.connect(admin).mintCollectionSingle(firstCollectionId, backer.address)).to.be.revertedWith(
+      "Minting cap reached"
+    );
   });
 
   it("should mint batch", async function () {
     await createCollection(10);
-    await expect(
-      corite
-        .connect(admin)
-        .mintCollectionSingle(firstCollectionId, backer.address)
-    ).to.be.revertedWith("MINTER_HANDLER role required");
-    await corite.connect(owner).grantRole(MINTER_HANDLER, admin.address);
-    await corite
-      .connect(admin)
-      .mintCollectionBatch(firstCollectionId, 5, backer.address);
-    await expect(
-      corite
-        .connect(admin)
-        .mintCollectionBatch(firstCollectionId, 6, backer.address)
-    ).to.be.revertedWith("Amount exceeds supply cap");
+    await expect(corite.connect(admin).mintCollectionSingle(firstCollectionId, backer.address)).to.be.revertedWith(
+      "MINTER_NONCE_HANDLER role required"
+    );
+    await corite.connect(owner).grantRole(MINTER_NONCE_HANDLER, admin.address);
+    await corite.connect(admin).mintCollectionBatch(firstCollectionId, 5, backer.address);
+    await expect(corite.connect(admin).mintCollectionBatch(firstCollectionId, 6, backer.address)).to.be.revertedWith(
+      "Amount exceeds supply cap"
+    );
   });
 
   it("should close collection", async function () {
     await createCollection(10);
-    await expect(
-      corite.connect(artist).closeCollection(firstCollectionId)
-    ).to.be.revertedWith("CREATE_CLOSE_HANDLER role required");
+    await expect(corite.connect(artist).closeCollection(firstCollectionId)).to.be.revertedWith(
+      "CREATE_CLOSE_HANDLER role required"
+    );
     await corite.connect(owner).grantRole(CREATE_CLOSE_HANDLER, artist.address);
 
     await expect(corite.connect(artist).closeCollection(firstCollectionId))
       .to.emit(corite, "CloseCollectionEvent")
       .withArgs(ethers.BigNumber.from(firstCollectionId));
 
-    await corite.connect(owner).grantRole(MINTER_HANDLER, admin.address);
-    await expect(
-      corite
-        .connect(admin)
-        .mintCollectionSingle(firstCollectionId, backer.address)
-    ).to.be.revertedWith("Collection is closed");
-    await expect(
-      corite
-        .connect(admin)
-        .mintCollectionBatch(firstCollectionId, 5, backer.address)
-    ).to.be.revertedWith("Collection is closed");
+    await corite.connect(owner).grantRole(MINTER_NONCE_HANDLER, admin.address);
+    await expect(corite.connect(admin).mintCollectionSingle(firstCollectionId, backer.address)).to.be.revertedWith(
+      "Collection closed"
+    );
+    await expect(corite.connect(admin).mintCollectionBatch(firstCollectionId, 5, backer.address)).to.be.revertedWith(
+      "Collection closed"
+    );
   });
-}); */
+});
