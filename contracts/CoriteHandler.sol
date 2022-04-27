@@ -3,12 +3,13 @@ pragma solidity ^0.8.4;
 pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/security/Pausable.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "../interfaces/ICorite_ERC1155.sol";
 
-contract CoriteHandler is AccessControl, ReentrancyGuard {
+contract CoriteHandler is AccessControl, ReentrancyGuard, Pausable {
     using SafeERC20 for IERC20;
     bytes32 public constant CORITE_ADMIN = keccak256("CORITE_ADMIN");
     bytes32 public constant CORITE_MINTER = keccak256("CORITE_MINTER");
@@ -33,7 +34,6 @@ contract CoriteHandler is AccessControl, ReentrancyGuard {
 
     event CampaignStakeInfo(uint256 indexed campaignId, uint256 start, uint256 stop, uint256 release);
     event ValidToken(address indexed tokenAddress, bool valid);
-    event COToken(address tokenAddress);
     event RefundAccount(address accountAddress);
     event CoriteAccount(address accountAddress);
     event WithdrawNativeTokens(address accountAddress);
@@ -95,7 +95,7 @@ contract CoriteHandler is AccessControl, ReentrancyGuard {
         emit CampaignStakeInfo(_campaignId, _start, _stop, _release);
     }
 
-    function stake(uint256 _campaignId, uint256 _stakeCO) external {
+    function stake(uint256 _campaignId, uint256 _stakeCO) external whenNotPaused {
         require(
             campaignStakeInfo[_campaignId].start < block.timestamp &&
                 block.timestamp < campaignStakeInfo[_campaignId].stop,
@@ -131,7 +131,7 @@ contract CoriteHandler is AccessControl, ReentrancyGuard {
         uint8 _v,
         bytes32 _r,
         bytes32 _s
-    ) external payable {
+    ) external payable whenNotPaused {
         require(campaignStakeInfo[_campaignId].stop < block.timestamp, "Staking phase is not over");
         bytes memory message = abi.encode(
             msg.sender,
@@ -169,7 +169,7 @@ contract CoriteHandler is AccessControl, ReentrancyGuard {
         uint8 _v,
         bytes32 _r,
         bytes32 _s
-    ) external {
+    ) external whenNotPaused {
         bytes memory message = abi.encode(
             msg.sender,
             _tokenAddress,
@@ -198,7 +198,7 @@ contract CoriteHandler is AccessControl, ReentrancyGuard {
         uint8 _v,
         bytes32 _r,
         bytes32 _s
-    ) external {
+    ) external whenNotPaused {
         bytes memory message = abi.encode(
             msg.sender,
             _campaignId,
@@ -231,7 +231,7 @@ contract CoriteHandler is AccessControl, ReentrancyGuard {
         uint8 _v,
         bytes32 _r,
         bytes32 _s
-    ) external {
+    ) external whenNotPaused {
         bytes memory message = abi.encode(
             _owner,
             _totalSupply,
@@ -251,7 +251,7 @@ contract CoriteHandler is AccessControl, ReentrancyGuard {
         uint8 _v,
         bytes32 _r,
         bytes32 _s
-    ) external payable {
+    ) external payable whenNotPaused {
         bytes memory message = abi.encode(
             msg.sender,
             _collection,
@@ -281,7 +281,7 @@ contract CoriteHandler is AccessControl, ReentrancyGuard {
         uint8 _v,
         bytes32 _r,
         bytes32 _s
-    ) external {
+    ) external whenNotPaused {
         bytes memory message = abi.encode(
             msg.sender,
             _collection,
@@ -321,12 +321,19 @@ contract CoriteHandler is AccessControl, ReentrancyGuard {
 
     function setCOtoken(address _tokenAddress) external isDEFAULT_ADMIN {
         CO = _tokenAddress;
-        emit COToken(_tokenAddress);
     }
 
     function withdrawNativeTokens() external isDEFAULT_ADMIN {
         _transferNativeToken(coriteAccount, address(this).balance);
         emit WithdrawNativeTokens(coriteAccount);
+    }
+
+    function pauseHandler() public isDEFAULT_ADMIN {
+        _pause();
+    }
+
+    function unpauseHandler() public isDEFAULT_ADMIN {
+        _unpause();
     }
 
     receive() external payable {}
