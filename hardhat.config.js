@@ -22,6 +22,11 @@ module.exports = {
       accounts: [`0x${BSC_TESTNET_PRIVATE_KEY}`],
       allowUnlimitedContractSize: true,
     },
+    BSCMainnet: {
+      url: `${process.env.MORALISMAINNET}`,
+      accounts: [`0x${process.env.BSCMAINNET_PRIVATE_KEY}`],
+      allowUnlimitedContractSize:true,
+    },
   },
   etherscan: {
     apiKey: BSCSCAN_API_KEY,
