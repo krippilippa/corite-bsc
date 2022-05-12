@@ -7,6 +7,7 @@ var owner,
   artist,
   backer,
   server,
+  block,
   CNR,
   userNonce,
   state,
@@ -41,33 +42,67 @@ describe("Test campaigns", function () {
     await handler.connect(admin).mintCampaignShares(firstCampaignId, 200, backer.address);
     await state.connect(backer).setApprovalForAll(handler.address, true);
     userNonce = await state.currentNonce(backer.address);
+    block = (await ethers.provider.getBlock("latest")).number;
   });
 
   it("should buy shares with native token", async function () {
     const totalPrice = ethers.utils.parseEther("0.2");
     let obj = ethers.utils.defaultAbiCoder.encode(
-      ["address", "uint", "uint", "address", "uint", "uint"],
-      [backer.address, firstCampaignId, sharesAmount, ethers.constants.AddressZero, totalPrice, userNonce]
+      ["address", "uint", "uint", "address", "uint", "uint", "uint"],
+      [backer.address, firstCampaignId, sharesAmount, ethers.constants.AddressZero, totalPrice, userNonce, block + 200]
     );
     const { prefix, v, r, s } = await createSignature(obj);
     await expect(
       handler
         .connect(backer)
-        .buyCampaignShares(firstCampaignId, sharesAmount, ethers.constants.AddressZero, totalPrice, prefix, v, r, s, {
-          value: ethers.utils.parseEther("0.1"),
-        })
+        .buyCampaignShares(
+          firstCampaignId,
+          sharesAmount,
+          ethers.constants.AddressZero,
+          totalPrice,
+          block + 200,
+          prefix,
+          v,
+          r,
+          s,
+          {
+            value: ethers.utils.parseEther("0.1"),
+          }
+        )
     ).to.be.revertedWith("Invalid token amount");
     await handler
       .connect(backer)
-      .buyCampaignShares(firstCampaignId, sharesAmount, ethers.constants.AddressZero, totalPrice, prefix, v, r, s, {
-        value: ethers.utils.parseEther("0.2"),
-      });
+      .buyCampaignShares(
+        firstCampaignId,
+        sharesAmount,
+        ethers.constants.AddressZero,
+        totalPrice,
+        block + 200,
+        prefix,
+        v,
+        r,
+        s,
+        {
+          value: ethers.utils.parseEther("0.2"),
+        }
+      );
     await expect(
       handler
         .connect(backer)
-        .buyCampaignShares(firstCampaignId, sharesAmount, ethers.constants.AddressZero, totalPrice, prefix, v, r, s, {
-          value: ethers.utils.parseEther("0.2"),
-        })
+        .buyCampaignShares(
+          firstCampaignId,
+          sharesAmount,
+          ethers.constants.AddressZero,
+          totalPrice,
+          block + 200,
+          prefix,
+          v,
+          r,
+          s,
+          {
+            value: ethers.utils.parseEther("0.2"),
+          }
+        )
     ).to.be.revertedWith("Invalid server signature");
   });
 
@@ -76,32 +111,40 @@ describe("Test campaigns", function () {
     const tokenAddress = testCO.address;
 
     let obj = ethers.utils.defaultAbiCoder.encode(
-      ["address", "uint", "uint", "address", "uint", "uint"],
-      [backer.address, firstCampaignId, sharesAmount, tokenAddress, tokenAmount, userNonce]
+      ["address", "uint", "uint", "address", "uint", "uint", "uint"],
+      [backer.address, firstCampaignId, sharesAmount, tokenAddress, tokenAmount, userNonce, block + 200]
     );
     const { prefix, v, r, s } = await createSignature(obj);
     await expect(
       handler
         .connect(backer)
-        .buyCampaignShares(firstCampaignId, sharesAmount, tokenAddress, tokenAmount, prefix, v, r, s)
+        .buyCampaignShares(firstCampaignId, sharesAmount, tokenAddress, tokenAmount, block + 200, prefix, v, r, s)
     ).to.be.revertedWith("Invalid token address");
     await handler.connect(admin).setValidToken(tokenAddress, true);
     await testCO.connect(backer).approve(handler.address, tokenAmount);
     await handler
       .connect(backer)
-      .buyCampaignShares(firstCampaignId, sharesAmount, tokenAddress, tokenAmount, prefix, v, r, s);
+      .buyCampaignShares(firstCampaignId, sharesAmount, tokenAddress, tokenAmount, block + 200, prefix, v, r, s);
     await expect(
       handler
         .connect(backer)
-        .buyCampaignShares(firstCampaignId, sharesAmount, tokenAddress, tokenAmount, prefix, v, r, s)
+        .buyCampaignShares(firstCampaignId, sharesAmount, tokenAddress, tokenAmount, block + 200, prefix, v, r, s)
     ).to.be.revertedWith("Invalid server signature");
   });
 
   it("should refund shares for native tokens", async function () {
     const refundAmount = ethers.utils.parseEther("0.2");
     let obj = ethers.utils.defaultAbiCoder.encode(
-      ["address", "address", "uint", "uint", "uint", "uint"],
-      [backer.address, ethers.constants.AddressZero, refundAmount, firstCampaignId, sharesAmount, userNonce]
+      ["address", "address", "uint", "uint", "uint", "uint", "uint"],
+      [
+        backer.address,
+        ethers.constants.AddressZero,
+        refundAmount,
+        firstCampaignId,
+        sharesAmount,
+        userNonce,
+        block + 200,
+      ]
     );
     const { prefix, v, r, s } = await createSignature(obj);
     await expect(
@@ -112,6 +155,7 @@ describe("Test campaigns", function () {
           sharesAmount,
           ethers.constants.AddressZero,
           refundAmount,
+          block + 200,
           prefix,
           v,
           r,
@@ -124,7 +168,17 @@ describe("Test campaigns", function () {
     });
     await handler
       .connect(backer)
-      .refundCampaignShares(firstCampaignId, sharesAmount, ethers.constants.AddressZero, refundAmount, prefix, v, r, s);
+      .refundCampaignShares(
+        firstCampaignId,
+        sharesAmount,
+        ethers.constants.AddressZero,
+        refundAmount,
+        block + 200,
+        prefix,
+        v,
+        r,
+        s
+      );
     await expect(
       handler
         .connect(backer)
@@ -133,6 +187,7 @@ describe("Test campaigns", function () {
           sharesAmount,
           ethers.constants.AddressZero,
           refundAmount,
+          block + 200,
           prefix,
           v,
           r,
@@ -149,37 +204,37 @@ describe("Test campaigns", function () {
     const tokenAddress = testCO.address;
 
     let obj = ethers.utils.defaultAbiCoder.encode(
-      ["address", "address", "uint", "uint", "uint", "uint"],
-      [backer.address, tokenAddress, tokenAmount, firstCampaignId, sharesAmount, userNonce]
+      ["address", "address", "uint", "uint", "uint", "uint", "uint"],
+      [backer.address, tokenAddress, tokenAmount, firstCampaignId, sharesAmount, userNonce, block + 200]
     );
     const { prefix, v, r, s } = await createSignature(obj);
     await expect(
       handler
         .connect(backer)
-        .refundCampaignShares(firstCampaignId, sharesAmount, tokenAddress, tokenAmount, prefix, v, r, s)
+        .refundCampaignShares(firstCampaignId, sharesAmount, tokenAddress, tokenAmount, block + 200, prefix, v, r, s)
     ).to.be.revertedWith("Invalid token address");
     await handler.connect(admin).setValidToken(tokenAddress, true);
     await handler.connect(owner).setRefundAccount(admin.address);
     await testCO.connect(admin).approve(handler.address, tokenAmount);
     await handler
       .connect(backer)
-      .refundCampaignShares(firstCampaignId, sharesAmount, tokenAddress, tokenAmount, prefix, v, r, s);
+      .refundCampaignShares(firstCampaignId, sharesAmount, tokenAddress, tokenAmount, block + 200, prefix, v, r, s);
     await expect(
       handler
         .connect(backer)
-        .refundCampaignShares(firstCampaignId, sharesAmount, tokenAddress, tokenAmount, prefix, v, r, s)
+        .refundCampaignShares(firstCampaignId, sharesAmount, tokenAddress, tokenAmount, block + 200, prefix, v, r, s)
     ).to.be.revertedWith("Invalid server signature");
   });
 
   it("should burn campaign shares", async function () {
     let obj = ethers.utils.defaultAbiCoder.encode(
-      ["address", "uint", "uint", "uint"],
-      [backer.address, firstCampaignId, sharesAmount, userNonce]
+      ["address", "uint", "uint", "uint", "uint"],
+      [backer.address, firstCampaignId, sharesAmount, userNonce, block + 200]
     );
     const { prefix, v, r, s } = await createSignature(obj);
-    await handler.connect(backer).burnCampaignShares(firstCampaignId, sharesAmount, prefix, v, r, s);
+    await handler.connect(backer).burnCampaignShares(firstCampaignId, sharesAmount, block + 200, prefix, v, r, s);
     await expect(
-      handler.connect(backer).burnCampaignShares(firstCampaignId, sharesAmount, prefix, v, r, s)
+      handler.connect(backer).burnCampaignShares(firstCampaignId, sharesAmount, block + 200, prefix, v, r, s)
     ).to.be.revertedWith("Invalid server signature");
   });
 });
@@ -205,24 +260,24 @@ describe("Test collections", function () {
     let ownerCollectionCount = await state.getCollectionCount(artist.address);
     let totalSupply = 1000;
     let obj = ethers.utils.defaultAbiCoder.encode(
-      ["address", "uint", "uint"],
-      [artist.address, totalSupply, ownerCollectionCount]
+      ["address", "uint", "uint", "uint"],
+      [artist.address, totalSupply, ownerCollectionCount, block + 200]
     );
     const { prefix, v, r, s } = await createSignature(obj);
-    await handler.connect(artist).createCollection(artist.address, totalSupply, prefix, v, r, s);
+    await handler.connect(artist).createCollection(artist.address, totalSupply, block + 200, prefix, v, r, s);
   });
 
   it("should create collection", async function () {
     let ownerCollectionCount = await state.getCollectionCount(artist.address);
     let totalSupply = 1000;
     let obj = ethers.utils.defaultAbiCoder.encode(
-      ["address", "uint", "uint"],
-      [artist.address, totalSupply, ownerCollectionCount]
+      ["address", "uint", "uint", "uint"],
+      [artist.address, totalSupply, ownerCollectionCount, block + 200]
     );
     const { prefix, v, r, s } = await createSignature(obj);
-    await handler.connect(artist).createCollection(artist.address, totalSupply, prefix, v, r, s);
+    await handler.connect(artist).createCollection(artist.address, totalSupply, block + 200, prefix, v, r, s);
     await expect(
-      handler.connect(artist).createCollection(artist.address, totalSupply, prefix, v, r, s)
+      handler.connect(artist).createCollection(artist.address, totalSupply, block + 200, prefix, v, r, s)
     ).to.be.revertedWith("Invalid server signature");
   });
 
@@ -231,22 +286,28 @@ describe("Test collections", function () {
     let id = await state.latestCollectionId();
 
     let obj = ethers.utils.defaultAbiCoder.encode(
-      ["address", "uint", "uint", "address", "uint", "uint"],
-      [backer.address, id, 1, ethers.constants.AddressZero, nativeAmount, userNonce]
+      ["address", "uint", "uint", "address", "uint", "uint", "uint"],
+      [backer.address, id, 1, ethers.constants.AddressZero, nativeAmount, userNonce, block + 200]
     );
     const { prefix, v, r, s } = await createSignature(obj);
     await expect(
-      handler.connect(backer).payToMintNFTs(id, 1, ethers.constants.AddressZero, nativeAmount, prefix, v, r, s, {
-        value: ethers.utils.parseEther("0.1"),
-      })
+      handler
+        .connect(backer)
+        .payToMintNFTs(id, 1, ethers.constants.AddressZero, nativeAmount, block + 200, prefix, v, r, s, {
+          value: ethers.utils.parseEther("0.1"),
+        })
     ).to.be.revertedWith("Invalid token amount");
-    await handler.connect(backer).payToMintNFTs(id, 1, ethers.constants.AddressZero, nativeAmount, prefix, v, r, s, {
-      value: nativeAmount,
-    });
-    await expect(
-      handler.connect(backer).payToMintNFTs(id, 1, ethers.constants.AddressZero, nativeAmount, prefix, v, r, s, {
+    await handler
+      .connect(backer)
+      .payToMintNFTs(id, 1, ethers.constants.AddressZero, nativeAmount, block + 200, prefix, v, r, s, {
         value: nativeAmount,
-      })
+      });
+    await expect(
+      handler
+        .connect(backer)
+        .payToMintNFTs(id, 1, ethers.constants.AddressZero, nativeAmount, block + 200, prefix, v, r, s, {
+          value: nativeAmount,
+        })
     ).to.be.revertedWith("Invalid server signature");
   });
 
@@ -256,18 +317,18 @@ describe("Test collections", function () {
     let id = await state.latestCollectionId();
 
     let obj = ethers.utils.defaultAbiCoder.encode(
-      ["address", "uint", "uint", "address", "uint", "uint"],
-      [backer.address, id, 5, tokenAddress, tokenAmount, userNonce]
+      ["address", "uint", "uint", "address", "uint", "uint", "uint"],
+      [backer.address, id, 5, tokenAddress, tokenAmount, userNonce, block + 200]
     );
     const { prefix, v, r, s } = await createSignature(obj);
     await expect(
-      handler.connect(backer).payToMintNFTs(id, 5, tokenAddress, tokenAmount, prefix, v, r, s)
+      handler.connect(backer).payToMintNFTs(id, 5, tokenAddress, tokenAmount, block + 200, prefix, v, r, s)
     ).to.be.revertedWith("Invalid token address");
     await handler.connect(admin).setValidToken(tokenAddress, true);
     await testCO.connect(backer).approve(handler.address, tokenAmount);
-    await handler.connect(backer).payToMintNFTs(id, 5, tokenAddress, tokenAmount, prefix, v, r, s);
+    await handler.connect(backer).payToMintNFTs(id, 5, tokenAddress, tokenAmount, block + 200, prefix, v, r, s);
     await expect(
-      handler.connect(backer).payToMintNFTs(id, 5, tokenAddress, tokenAmount, prefix, v, r, s)
+      handler.connect(backer).payToMintNFTs(id, 5, tokenAddress, tokenAmount, block + 200, prefix, v, r, s)
     ).to.be.revertedWith("Invalid server signature");
   });
 
@@ -275,13 +336,13 @@ describe("Test collections", function () {
     let id = await state.latestCollectionId();
 
     let obj = ethers.utils.defaultAbiCoder.encode(
-      ["address", "uint", "uint", "uint"],
-      [backer.address, id, 5, userNonce]
+      ["address", "uint", "uint", "uint", "uint"],
+      [backer.address, id, 5, userNonce, block + 200]
     );
     const { prefix, v, r, s } = await createSignature(obj);
 
-    await handler.connect(backer).mintNFTs(id, 5, prefix, v, r, s);
-    await expect(handler.connect(backer).mintNFTs(id, 5, prefix, v, r, s)).to.be.revertedWith(
+    await handler.connect(backer).mintNFTs(id, 5, block + 200, prefix, v, r, s);
+    await expect(handler.connect(backer).mintNFTs(id, 5, block + 200, prefix, v, r, s)).to.be.revertedWith(
       "Invalid server signature"
     );
   });

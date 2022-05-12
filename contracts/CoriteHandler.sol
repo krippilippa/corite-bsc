@@ -6,11 +6,9 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/security/Pausable.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "../interfaces/ICorite_ERC1155.sol";
 
 contract CoriteHandler is AccessControl, ReentrancyGuard, Pausable {
-    using SafeERC20 for IERC20;
     bytes32 public constant CORITE_ADMIN = keccak256("CORITE_ADMIN");
     bytes32 public constant CORITE_MINTER = keccak256("CORITE_MINTER");
     bytes32 public constant CORITE_CREATOR = keccak256("CORITE_CREATOR");
@@ -101,7 +99,7 @@ contract CoriteHandler is AccessControl, ReentrancyGuard, Pausable {
                 block.timestamp < campaignStakeInfo[_campaignId].stop,
             "Staking for this campaign is not active");
 
-        IERC20(CO).safeTransferFrom(msg.sender, address(this), _stakeCO);
+        IERC20(CO).transferFrom(msg.sender, address(this), _stakeCO);
         stakeInCampaign[msg.sender][_campaignId] += _stakeCO;
 
         campaignStakeInfo[_campaignId].stakedCOs += _stakeCO;
@@ -110,15 +108,11 @@ contract CoriteHandler is AccessControl, ReentrancyGuard, Pausable {
     function releaseStake(uint256 _campaignId) external nonReentrant {
         require(campaignStakeInfo[_campaignId].release < block.timestamp, "Can not release stake before release date");
         require(stakeInCampaign[msg.sender][_campaignId] > 0, "Nothing staked");
-        IERC20(CO).safeTransfer(msg.sender, stakeInCampaign[msg.sender][_campaignId]);
+        IERC20(CO).transfer(msg.sender, stakeInCampaign[msg.sender][_campaignId]);
         stakeInCampaign[msg.sender][_campaignId] = 0;
     }
 
-    function createCampaign(
-        address _owner,
-        uint256 _supplyCap,
-        uint256 _toBackersCap
-    ) external isCORITE_CREATOR {
+    function createCampaign(address _owner, uint256 _supplyCap, uint256 _toBackersCap) external isCORITE_CREATOR {
         coriteState.createCampaign(_owner, _supplyCap, _toBackersCap);
     }
 
@@ -127,6 +121,7 @@ contract CoriteHandler is AccessControl, ReentrancyGuard, Pausable {
         uint256 _sharesAmount,
         address _tokenAddress,
         uint256 _tokenAmount,
+        uint256 _lastValidBlock,
         bytes calldata _prefix,
         uint8 _v,
         bytes32 _r,
@@ -139,19 +134,13 @@ contract CoriteHandler is AccessControl, ReentrancyGuard, Pausable {
             _sharesAmount,
             _tokenAddress,
             _tokenAmount,
-            coriteState.currentNonce(msg.sender)
+            coriteState.currentNonce(msg.sender),
+            _lastValidBlock
         );
-        bytes32 m = keccak256(abi.encodePacked(_prefix, message));
-        _validateSignature(m, _v, _r, _s);
+        _validateSignature(_v, _r, _s, message, _prefix, _lastValidBlock);
 
         coriteState.incrementNonce(msg.sender);
-        if (_tokenAddress == address(0)) {
-            require(_tokenAmount == msg.value, "Invalid token amount");
-            _transferNativeToken(coriteAccount, msg.value);
-        } else {
-            _checkValidToken(_tokenAddress);
-            IERC20(_tokenAddress).safeTransferFrom(msg.sender, coriteAccount, _tokenAmount);
-        }
+        _transferTokens(_tokenAddress, _tokenAmount);
         coriteState.mintCampaignShares(_campaignId, _sharesAmount, msg.sender);
     }
 
@@ -165,6 +154,7 @@ contract CoriteHandler is AccessControl, ReentrancyGuard, Pausable {
         uint256 _sharesAmount,
         address _tokenAddress,
         uint256 _tokenAmount,
+        uint256 _lastValidBlock,
         bytes calldata _prefix,
         uint8 _v,
         bytes32 _r,
@@ -176,10 +166,11 @@ contract CoriteHandler is AccessControl, ReentrancyGuard, Pausable {
             _tokenAmount,
             _campaignId,
             _sharesAmount,
-            coriteState.currentNonce(msg.sender)
+            coriteState.currentNonce(msg.sender),
+            _lastValidBlock
+
         );
-        bytes32 m = keccak256(abi.encodePacked(_prefix, message));
-        _validateSignature(m, _v, _r, _s);
+        _validateSignature(_v, _r, _s, message, _prefix, _lastValidBlock);
         coriteState.incrementNonce(msg.sender);
 
         coriteState.burnToken(_campaignId, _sharesAmount, msg.sender);
@@ -187,13 +178,14 @@ contract CoriteHandler is AccessControl, ReentrancyGuard, Pausable {
             _transferNativeToken(msg.sender, _tokenAmount);
         } else {
             _checkValidToken(_tokenAddress);
-            IERC20(_tokenAddress).safeTransferFrom(refundAccount, msg.sender, _tokenAmount);
+            IERC20(_tokenAddress).transferFrom(refundAccount, msg.sender, _tokenAmount);
         }
     }
 
     function burnCampaignShares(
         uint256 _campaignId,
         uint256 _sharesAmount,
+        uint256 _lastValidBlock,
         bytes calldata _prefix,
         uint8 _v,
         bytes32 _r,
@@ -203,10 +195,11 @@ contract CoriteHandler is AccessControl, ReentrancyGuard, Pausable {
             msg.sender,
             _campaignId,
             _sharesAmount,
-            coriteState.currentNonce(msg.sender)
+            coriteState.currentNonce(msg.sender),
+            _lastValidBlock
+
         );
-        bytes32 m = keccak256(abi.encodePacked(_prefix, message));
-        _validateSignature(m, _v, _r, _s);
+        _validateSignature(_v, _r, _s, message, _prefix, _lastValidBlock);
 
         coriteState.incrementNonce(msg.sender);
         coriteState.burnToken(_campaignId, _sharesAmount, msg.sender);
@@ -227,6 +220,7 @@ contract CoriteHandler is AccessControl, ReentrancyGuard, Pausable {
     function createCollection(
         address _owner,
         uint256 _totalSupply,
+        uint256 _lastValidBlock,
         bytes calldata _prefix,
         uint8 _v,
         bytes32 _r,
@@ -235,10 +229,11 @@ contract CoriteHandler is AccessControl, ReentrancyGuard, Pausable {
         bytes memory message = abi.encode(
             _owner,
             _totalSupply,
-            coriteState.getCollectionCount(_owner)
+            coriteState.getCollectionCount(_owner),
+            _lastValidBlock
+
         );
-        bytes32 m = keccak256(abi.encodePacked(_prefix, message));
-        _validateSignature(m, _v, _r, _s);
+        _validateSignature(_v, _r, _s, message, _prefix, _lastValidBlock);
         coriteState.createCollection(_owner, _totalSupply);
     }
 
@@ -247,6 +242,7 @@ contract CoriteHandler is AccessControl, ReentrancyGuard, Pausable {
         uint256 _amount,
         address _tokenAddress,
         uint256 _tokenAmount,
+        uint256 _lastValidBlock,
         bytes memory _prefix,
         uint8 _v,
         bytes32 _r,
@@ -258,25 +254,21 @@ contract CoriteHandler is AccessControl, ReentrancyGuard, Pausable {
             _amount,
             _tokenAddress,
             _tokenAmount,
-            coriteState.currentNonce(msg.sender)
+            coriteState.currentNonce(msg.sender),
+            _lastValidBlock
+
         );
-        bytes32 m = keccak256(abi.encodePacked(_prefix, message));
-        _validateSignature(m, _v, _r, _s);
+        _validateSignature(_v, _r, _s, message, _prefix, _lastValidBlock);
 
         coriteState.incrementNonce(msg.sender);
-        if (_tokenAddress == address(0)) {
-            require(_tokenAmount == msg.value, "Invalid token amount");
-            _transferNativeToken(coriteAccount, msg.value);
-        } else {
-            _checkValidToken(_tokenAddress);
-            IERC20(_tokenAddress).safeTransferFrom(msg.sender, coriteAccount, _tokenAmount);
-        }
+        _transferTokens(_tokenAddress, _tokenAmount);
         _mintCollection(_collection, _amount, msg.sender);
     }
 
     function mintNFTs(
         uint256 _collection,
         uint256 _amount,
+        uint256 _lastValidBlock,
         bytes memory _prefix,
         uint8 _v,
         bytes32 _r,
@@ -286,10 +278,10 @@ contract CoriteHandler is AccessControl, ReentrancyGuard, Pausable {
             msg.sender,
             _collection,
             _amount,
-            coriteState.currentNonce(msg.sender)
+            coriteState.currentNonce(msg.sender),
+            _lastValidBlock
         );
-        bytes32 m = keccak256(abi.encodePacked(_prefix, message));
-        _validateSignature(m, _v, _r, _s);
+        _validateSignature(_v, _r, _s, message, _prefix, _lastValidBlock);
         coriteState.incrementNonce(msg.sender);
         _mintCollection(_collection, _amount, msg.sender);
     }
@@ -350,12 +342,24 @@ contract CoriteHandler is AccessControl, ReentrancyGuard, Pausable {
         }
     }
 
-    function _validateSignature(bytes32 _m, uint8 _v, bytes32 _r, bytes32 _s) internal view {
-        require(hasRole(SERVER_SIGNER, ecrecover(_m, _v, _r, _s)), "Invalid server signature");
+    function _validateSignature(uint8 _v, bytes32 _r, bytes32 _s, bytes memory _message, bytes memory _prefix, uint256 _lastValidBlock) internal view {
+        require(block.number <= _lastValidBlock,"The signature has expired");
+        bytes32 m = keccak256(abi.encodePacked(_prefix, _message));
+        require(hasRole(SERVER_SIGNER, ecrecover(m, _v, _r, _s)), "Invalid server signature");
     }
 
     function _transferNativeToken(address _to, uint256 _amount) internal {
         (bool sent, ) = _to.call{value: _amount}("");
         require(sent, "Failed to transfer native token");
+    }
+
+    function _transferTokens(address _tokenAddress, uint256 _tokenAmount) internal {
+        if (_tokenAddress == address(0)) {
+            require(_tokenAmount == msg.value, "Invalid token amount");
+            _transferNativeToken(coriteAccount, msg.value);
+        } else {
+            _checkValidToken(_tokenAddress);
+            IERC20(_tokenAddress).transferFrom(msg.sender, coriteAccount, _tokenAmount);
+        }
     }
 }
