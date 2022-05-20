@@ -6,11 +6,10 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/security/Pausable.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "../interfaces/ICorite_ERC1155.sol";
 
 contract CoriteHandler is AccessControl, ReentrancyGuard, Pausable {
-    using SafeERC20 for IERC20;
+
     bytes32 public constant CORITE_ADMIN = keccak256("CORITE_ADMIN");
     bytes32 public constant CORITE_MINTER = keccak256("CORITE_MINTER");
     bytes32 public constant CORITE_CREATOR = keccak256("CORITE_CREATOR");
@@ -101,7 +100,7 @@ contract CoriteHandler is AccessControl, ReentrancyGuard, Pausable {
                 block.timestamp < campaignStakeInfo[_campaignId].stop,
             "Staking for this campaign is not active");
 
-        IERC20(CO).safeTransferFrom(msg.sender, address(this), _stakeCO);
+        IERC20(CO).transferFrom(msg.sender, address(this), _stakeCO);
         stakeInCampaign[msg.sender][_campaignId] += _stakeCO;
 
         campaignStakeInfo[_campaignId].stakedCOs += _stakeCO;
@@ -110,7 +109,7 @@ contract CoriteHandler is AccessControl, ReentrancyGuard, Pausable {
     function releaseStake(uint256 _campaignId) external nonReentrant {
         require(campaignStakeInfo[_campaignId].release < block.timestamp, "Can not release stake before release date");
         require(stakeInCampaign[msg.sender][_campaignId] > 0, "Nothing staked");
-        IERC20(CO).safeTransfer(msg.sender, stakeInCampaign[msg.sender][_campaignId]);
+        IERC20(CO).transfer(msg.sender, stakeInCampaign[msg.sender][_campaignId]);
         stakeInCampaign[msg.sender][_campaignId] = 0;
     }
 
@@ -150,7 +149,7 @@ contract CoriteHandler is AccessControl, ReentrancyGuard, Pausable {
             _transferNativeToken(coriteAccount, msg.value);
         } else {
             _checkValidToken(_tokenAddress);
-            IERC20(_tokenAddress).safeTransferFrom(msg.sender, coriteAccount, _tokenAmount);
+            IERC20(_tokenAddress).transferFrom(msg.sender, coriteAccount, _tokenAmount);
         }
         coriteState.mintCampaignShares(_campaignId, _sharesAmount, msg.sender);
     }
@@ -187,7 +186,7 @@ contract CoriteHandler is AccessControl, ReentrancyGuard, Pausable {
             _transferNativeToken(msg.sender, _tokenAmount);
         } else {
             _checkValidToken(_tokenAddress);
-            IERC20(_tokenAddress).safeTransferFrom(refundAccount, msg.sender, _tokenAmount);
+            IERC20(_tokenAddress).transferFrom(refundAccount, msg.sender, _tokenAmount);
         }
     }
 
@@ -269,7 +268,7 @@ contract CoriteHandler is AccessControl, ReentrancyGuard, Pausable {
             _transferNativeToken(coriteAccount, msg.value);
         } else {
             _checkValidToken(_tokenAddress);
-            IERC20(_tokenAddress).safeTransferFrom(msg.sender, coriteAccount, _tokenAmount);
+            IERC20(_tokenAddress).transferFrom(msg.sender, coriteAccount, _tokenAmount);
         }
         _mintCollection(_collection, _amount, msg.sender);
     }

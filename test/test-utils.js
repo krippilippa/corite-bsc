@@ -23,6 +23,27 @@ async function setHandler(_stateContract, _defaultAdmin) {
   return contract;
 }
 
+async function setCoriteMNFT(_cnr, _admin) {
+  const CoriteMNFT = await ethers.getContractFactory("CoriteMNFT");
+  const coriteMNFT = await CoriteMNFT.deploy(_cnr.address, _admin.address);
+  await coriteMNFT.deployed();
+  return coriteMNFT;
+}
+
+async function setCoriteMNFTHandler(cmft, sap, admin) {
+  const CoriteMNFTHandler = await ethers.getContractFactory("CoriteMNFTHandler");
+  const coriteMNFTHandler = await CoriteMNFTHandler.deploy(cmft.address, sap.address, admin.address);
+  await coriteMNFTHandler.deployed();
+  return coriteMNFTHandler;
+}
+
+async function setSingleApproveProxy(admin) {
+  const SingleApproveProxy = await ethers.getContractFactory("SingleApproveProxy");
+  const singleApproveProxy = await SingleApproveProxy.deploy(admin.address);
+  await singleApproveProxy.deployed();
+  return singleApproveProxy;
+}
+
 async function setTestCO() {
   const [owner, admin, artist, backer, server] = await ethers.getSigners();
 
@@ -42,4 +63,8 @@ module.exports = {
   setStateContract,
   setHandler,
   setTestCO,
+  setCoriteMNFT,
+  setCoriteMNFTHandler,
+  setSingleApproveProxy
+
 };
