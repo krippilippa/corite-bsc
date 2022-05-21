@@ -12,7 +12,7 @@ contract CoriteMNFT is ERC721, AccessControl {
     bytes32 public constant MINTER = keccak256("MINTER");
     bytes32 public constant BURNER = keccak256("BURNER");
 
-    constructor(ICNR _CNR, address _default_admin_role) ERC721("Corite M NFTs", "CO-M-NFTs") {
+    constructor(ICNR _CNR, address _default_admin_role) ERC721("Corite Various", "CO-Various") {
         CNR = _CNR;
         _setupRole(DEFAULT_ADMIN_ROLE, _default_admin_role);
     }

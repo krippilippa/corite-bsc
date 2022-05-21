@@ -16,7 +16,7 @@ contract SingleApproveProxy is AccessControl {
         _setupRole(DEFAULT_ADMIN_ROLE, _default_admin);
     }
 
-    function transferFrom(address _token, address _sender, address _recipient, uint256 _amount) external payable onlyRole(HANDLER) {
+    function transferFrom(address _token, address _sender, address _recipient, uint256 _amount) external onlyRole(HANDLER) {
         require(approvedTokens[_token], "ERC20 token not approved as payment");
         IERC20(_token).transferFrom(_sender, _recipient, _amount);
     }
@@ -26,7 +26,7 @@ contract SingleApproveProxy is AccessControl {
         emit TokenApproved(_token, _approved);
     }
 
-    function selfDestruct(address _kill) external onlyRole(DEFAULT_ADMIN_ROLE){
-        selfdestruct(payable(_kill));
+    function selfDestruct(address _sendFundsTo) external onlyRole(DEFAULT_ADMIN_ROLE){
+        selfdestruct(payable(_sendFundsTo));
     }
 }
