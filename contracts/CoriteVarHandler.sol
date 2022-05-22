@@ -4,12 +4,10 @@ pragma solidity ^0.8.4;
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/security/Pausable.sol";
 import "../interfaces/ICoriteMNFT.sol";
-import "../interfaces/ISingleApproveProxy.sol";
 
 contract CoriteVarHandler is AccessControl , Pausable{
 
     ICoriteMNFT public coriteMNFT;
-    address public coriteAccount;
 
     bytes32 public constant ADMIN = keccak256("ADMIN");
 
@@ -54,7 +52,8 @@ contract CoriteVarHandler is AccessControl , Pausable{
     }
 
     function mintForUser(address[] calldata _to, uint _group) external onlyRole(ADMIN){
-        require(groupOpen[_group], "Minting of group is closed");
+        require(groupOpen[_group] == true, "Minting of group is closed");
+        require(groupCount[_group] + _to.length <= groupRoof[_group], "Can not mint these many nfts");
         for (uint256 i = 0; i < _to.length; i++) {
             _mint(_to[i], _group);
         }
@@ -62,6 +61,7 @@ contract CoriteVarHandler is AccessControl , Pausable{
 
     function mintBatch(address _to, uint _group, uint _nr) external onlyRole(ADMIN){
         require(groupOpen[_group], "Minting of group is closed");
+        require(groupCount[_group] + _nr <= groupRoof[_group], "Can not mint these many nfts");
         for (uint256 i = 0; i < _nr; i++) {
             _mint(_to, _group);
         }
@@ -70,10 +70,6 @@ contract CoriteVarHandler is AccessControl , Pausable{
     function _mint(address _to, uint _group) internal {
         groupCount[_group]++;
         coriteMNFT.mint(_to, groupCount[_group]);
-    }
-
-    function updateCoriteAccount (address _coriteAccount) public onlyRole(DEFAULT_ADMIN_ROLE){
-        coriteAccount = _coriteAccount;
     }
 
     function pauseHandler() public onlyRole(ADMIN) {
