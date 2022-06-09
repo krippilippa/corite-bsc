@@ -28,14 +28,14 @@ module.exports = {
       url: `${process.env.MORALISMAINNET}`,
       accounts: [`0x${process.env.BSCMAINNET_PRIVATE_KEY}`],
       allowUnlimitedContractSize:true,
-    },
+    }, 
   },
 
   gasReporter: {
     currency: 'USD',
     token: 'BNB',
     gasPriceApi: "https://api.bscscan.com/api?module=proxy&action=eth_gasPrice",
-    gasPrice: 7,
+    gasPrice: 5,
     coinmarketcap: "0431b70e-ffff-4061-81b0-fa361384d36c",
     // enabled: (process.env.REPORT_GAS) ? true : false
   },
