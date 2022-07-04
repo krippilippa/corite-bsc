@@ -5,7 +5,7 @@ import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "../interfaces/ICNR.sol";
 
-contract AWCollection is ERC721Enumerable, AccessControl {
+contract AWOrigins is ERC721Enumerable, AccessControl {
 
     ICNR private CNR;
 
@@ -14,7 +14,7 @@ contract AWCollection is ERC721Enumerable, AccessControl {
 
     uint256 public LAUNCH_MAX_SUPPLY;
     uint256 public LAUNCH_SUPPLY;
-
+    uint256 public LAUNCHPAD_START_INDEX;
     address public LAUNCHPAD;
 
     modifier onlyLaunchpad() {
@@ -23,15 +23,16 @@ contract AWCollection is ERC721Enumerable, AccessControl {
         _;
     }
 
-    constructor(ICNR _CNR, address _launchpad, uint256 _LPmaxSupply, address _default_admin_role) ERC721("Alan Walker", "AW") {
+    constructor(ICNR _CNR, address _launchpad, uint256 _LPstartIndex, uint256 _LPmaxSupply, address _default_admin_role) ERC721("Corite x Alan Walker Origins", "Origins") {
         CNR = _CNR;
         LAUNCHPAD = _launchpad;
         LAUNCH_MAX_SUPPLY = _LPmaxSupply;
+        LAUNCHPAD_START_INDEX = _LPstartIndex;
         _setupRole(DEFAULT_ADMIN_ROLE, _default_admin_role);
     }
 
     function mint(address _to, uint _tokenId) external onlyRole(MINTER){
-        _safeMint(_to, _tokenId);
+        _mint(_to, _tokenId);
     }
 
     function mintTo(address to, uint size) external onlyLaunchpad {
@@ -39,8 +40,8 @@ contract AWCollection is ERC721Enumerable, AccessControl {
         require(size > 0, "size must greater than zero");
         require(LAUNCH_SUPPLY + size <= LAUNCH_MAX_SUPPLY, "max supply reached");
 
-        for (uint256 i=1; i <= size; i++) {
-            _mint(to, ERC721Enumerable.totalSupply() + i);
+        for (uint256 i = 0; i < size; i++) {
+            _mint(to, LAUNCHPAD_START_INDEX + LAUNCH_SUPPLY);
             LAUNCH_SUPPLY++;
         }
     }
