@@ -1,112 +1,126 @@
-// SPDX-License-Identifier: MIT
-pragma solidity ^0.8.4;
+// // SPDX-License-Identifier: MIT
+// pragma solidity ^0.8.4;
 
-import "@openzeppelin/contracts/access/AccessControl.sol";
-import "@openzeppelin/contracts/security/Pausable.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+// import "@openzeppelin/contracts/access/AccessControl.sol";
+// import "@openzeppelin/contracts/security/Pausable.sol";
+// import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+// import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+// import "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
 
-contract NFTMarketplace is AccessControl, Pausable {
-    bytes32 public constant MARKET_ADMIN = keccak256("MARKET_ADMIN");
+// contract Marketplace is AccessControl, Pausable {
+//     bytes32 public constant MARKET_ADMIN = keccak256("MARKET_ADMIN");
 
-    uint public taxRate;
-    address private taxAccount;
+//     IERC1155 campaigns;
+//     uint public taxRate;
+//     address private taxAccount;
 
-    struct Listing {
-        uint tokenId;
-        address owner;
-        address currency;
-        uint price;
-    }
+//     struct CampaignListing {
+//         address owner;
+//         uint amount;
+//         address currency;
+//         uint price;
+//     }
 
-    mapping(address => bool) public validTokens;
-    mapping(address=> uint) public latestListId;
-    mapping(address => mapping(uint => uint)) public tokenListId;
-    mapping(address => mapping(uint => Listing)) public listedNFTs;
+//     struct NFTListing {
+//         address owner;
+//         address currency;
+//         uint price;
+//     }
 
-    event AddListing(address indexed collection, uint indexed tokenId, address indexed owner, address currency, uint price);
-    event RemoveListing(address indexed collection, uint indexed tokenId);
-    event BoughtNFT(address indexed collection, uint indexed tokenId, address seller, address indexed buyer, address currency, uint price);
+//     struct CampaignOffer {
+//         address buyer;
+//         uint amount;
+//         address currency;
+//         uint price;
+//     }
 
-    constructor(address _taxAccount, uint _taxRate, address _default_admin) {
-        taxAccount = _taxAccount;
-        taxRate = _taxRate;
-        _setupRole(DEFAULT_ADMIN_ROLE, _default_admin);
-    }
+//     struct NFTOffer {
+//         address buyer;
+//         address currency;
+//         uint price;
+//     }
 
-    function addListing(address _collection, uint _tokenId, address _currency, uint _price) external whenNotPaused {
-        require(IERC721(_collection).ownerOf(_tokenId) == msg.sender, "Invalid token owner");
-        require(_price > 0, "Listing price can not be 0");
-        require(validTokens[_currency], "Invalid currency token");
+//     mapping(address => bool) public validTokens;
+
+//     mapping(uint => uint) public latestCampaignListId;
+//     mapping(uint => uint) public latestCampaignOfferId;
+
+//     mapping (uint=> mapping(address => uint)) public addressListingId;
+//     mapping (address => uint) public addressOfferId;
+
+//     mapping(uint => mapping(uint => CampaignListing)) public listedCampaigns;
+//     mapping(uint => mapping(uint => CampaignOffer)) public campaignOffers;
+
+//     mapping(address => mapping(uint => NFTListing)) public listedNFTs;
+//     mapping(address => mapping(uint => NFTOffer)) public NFTOffers;
+
+//     event AddCampaignListing(uint indexed campaignId, address indexed owner, uint amount, address currency, uint price);
+//     event RemoveCampaignListing(uint indexed campaignId, address indexed owner, uint amount);
+//     event PlaceCampaignOffer(uint indexed campaignId, address indexed buyer, uint price);
+//     event RemovedCampaignOffer(uint indexed tokenId, address indexed buyer);
+//     event BoughtCampaignShares(uint indexed campaignId, address indexed seller, address indexed buyer, uint amount, address currency, uint price);
+
+//     event AddNFTListing(address indexed owner, uint amount, address currency, uint price);
+//     event RemoveNFTListing(uint indexed tokenId, address indexed owner);
+//     event PlaceNFTOffer(uint indexed tokenId, address indexed buyer, uint price);
+//     event RemovedNFTOffer(uint indexed tokenId, address indexed buyer);
+//     event BoughtNFT(address indexed collection, uint indexed tokenId, address indexed seller, address indexed buyer, address currency, uint price);
+
+//     constructor(IERC1155 _campaigns, address _taxAccount, uint _taxRate, address _default_admin) {
+//         campaigns = _campaigns;
+//         taxAccount = _taxAccount;
+//         taxRate = _taxRate;
+//         _setupRole(DEFAULT_ADMIN_ROLE, _default_admin);
+//     }
+
+//     function addCampaignListing(uint _campaignId, uint _amount, address _currency, uint _price) external whenNotPaused {
+//         require(campaigns.balanceOf(msg.sender, _campaignId) >= _amount, "Invalid token amount");
+//         require(_price > 0, "Listing price can not be 0");
+//         require(_amount > 0, "Amount can not be 0");
+//         require(validTokens[_currency], "Invalid currency token");
         
-        latestListId[_collection]++;
-        uint id = latestListId[_collection];
-        tokenListId[_collection][_tokenId] = id;
-        listedNFTs[_collection][id] = Listing({tokenId: _tokenId, owner: msg.sender, currency: _currency, price: _price});
-        emit AddListing(_collection, _tokenId, msg.sender, _currency, _price);
-    }
+//         latestCampaignListId[_campaignId]++;
+//         uint id = latestCampaignListId[_campaignId];
+//         listedCampaigns[_campaignId][id] = CampaignListing({owner: msg.sender, amount: _amount, currency: _currency, price: _price});
+//         emit AddCampaignListing(_campaignId, msg.sender, _amount, _currency, _price);
+//     }
 
-    function removeListing(address _collection, uint _tokenId) external whenNotPaused {
-        require(IERC721(_collection).ownerOf(_tokenId) == msg.sender, "Invalid token owner");
-        delete listedNFTs[_collection][tokenListId[_collection][_tokenId]];
-        emit RemoveListing(_collection, _tokenId);
-    }
+//     function removeCampaignListing(uint _campaignId) external whenNotPaused {
+//         require(items.ownerOf(_campaignId) == msg.sender, "Invalid token owner");
+//         delete listedItems[_tokenId];
+//         emit RemoveCampaignListing(_campaignId, msg.sender);
+//     }
 
-    function buyNFT(address _collection, uint _tokenId, address _currency, uint _price) external whenNotPaused {
-        Listing memory listing = listedNFTs[_collection][tokenListId[_collection][_tokenId]];
-        require(listing.currency == _currency && listing.price == _price, "Price mis-match");
+//     function buyCampaignShares(uint _campaignId, uint _price) external whenNotPaused {
+//         require(listedItems[_tokenId].price > 0, "Invalid token id");
+//         require(listedItems[_tokenId].price == _price, "Invalid token price");
 
-        uint tax = (listing.price * taxRate) / 100;
+//         uint tax = (listedItems[_tokenId].price * taxRate) / 100;
 
-        IERC20(listing.currency).transferFrom(msg.sender, taxAccount, tax);
-        IERC20(listing.currency).transferFrom(msg.sender, listing.owner, listing.price - tax);
-        IERC721(_collection).safeTransferFrom(listing.owner, msg.sender, _tokenId);
+//         DAR.transferFrom(msg.sender, taxAccount, tax);
+//         DAR.transferFrom(msg.sender, listedItems[_tokenId].owner, listedItems[_tokenId].price - tax);
+//         items.safeTransferFrom(listedItems[_tokenId].owner, msg.sender, _tokenId);
 
-        delete listedNFTs[_collection][tokenListId[_collection][_tokenId]];
-        emit BoughtNFT(_collection, _tokenId, listing.owner, msg.sender, _currency, _price);
-    }
+//         delete listedItems[_tokenId];
+//         emit BoughtItem(_tokenId, listedItems[_tokenId].owner, msg.sender, _price);
+//     }
 
-    function getListData(address _collection, uint _tokenId) external view returns (Listing memory) {
-        return listedNFTs[_collection][tokenListId[_collection][_tokenId]];
-    }
+//     function setValidToken(address _token, bool _valid) external onlyRole(MARKET_ADMIN) {
+//         validTokens[_token] = _valid;
+//     }
 
-    function getActiveListings(address _collection) external view returns (Listing[] memory) {
-        uint maxId = latestListId[_collection];
-        Listing[] memory listings = new Listing[](maxId);
-        uint activeCount;
-        for (uint256 i = 1; i <= maxId; i++) {
-            if(listedNFTs[_collection][i].price != 0) {
-                listings[i-1] = listedNFTs[_collection][i];
-                activeCount++;
-            }
-        }
-        Listing[] memory activeListings = new Listing[](activeCount);
-        uint nextId;
-        for (uint256 i = 0; i < maxId; i++) {
-            if(listings[i].price != 0) {
-                activeListings[nextId] = listings[i];
-                nextId++;
-            }
-        }
-        return activeListings;
-    }
+//     function setTaxRate(uint _taxRate) external onlyRole(MARKET_ADMIN) {
+//         taxRate = _taxRate;
+//     }
 
-    function setValidToken(address _token, bool _valid) external onlyRole(MARKET_ADMIN) {
-        validTokens[_token] = _valid;
-    }
+//     function setTaxAccount(address _taxAccount) external onlyRole(MARKET_ADMIN) {
+//         taxAccount = _taxAccount;
+//     }
 
-    function setTaxRate(uint _taxRate) external onlyRole(MARKET_ADMIN) {
-        taxRate = _taxRate;
-    }
-
-    function setTaxAccount(address _taxAccount) external onlyRole(MARKET_ADMIN) {
-        taxAccount = _taxAccount;
-    }
-
-     function pauseMarket() public onlyRole(MARKET_ADMIN) {
-        _pause();
-    }
-    function unpauseMarket() public onlyRole(MARKET_ADMIN) {
-        _unpause();
-    }
-}
+//      function pauseMarket() public onlyRole(MARKET_ADMIN) {
+//         _pause();
+//     }
+//     function unpauseMarket() public onlyRole(MARKET_ADMIN) {
+//         _unpause();
+//     }
+// }
