@@ -86,7 +86,7 @@ contract CoriteMNFTHandler is AccessControl , Pausable{
             (bool sent, ) = coriteAccount.call{value: _price}("");
             require(sent, "Failed to transfer native token");
         }else{
-            singleApproveProxy.transferFrom(_token, msg.sender, coriteAccount, _price);
+            singleApproveProxy.transferERC20(_token, msg.sender, coriteAccount, _price);
         }
         _mint(msg.sender, _group);
     }

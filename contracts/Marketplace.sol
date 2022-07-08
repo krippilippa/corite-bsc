@@ -40,7 +40,7 @@ bytes32 public constant MARKET_ADMIN = keccak256("MARKET_ADMIN");
     }
 
     function addCampaignListing(address _contract, uint _campaignId, uint _amount, address _currency, uint _unitPrice) external whenNotPaused {
-        require(marketState.isValidContract(_contract), "Invalid NFT contract");
+        require(marketState.isValidContract(_contract), "Invalid contract");
         require(_unitPrice > 0, "Unit price can not be 0");
         require(marketState.validTokens(_currency), "Invalid currency token");
         
@@ -49,7 +49,7 @@ bytes32 public constant MARKET_ADMIN = keccak256("MARKET_ADMIN");
     }
 
     function removeListing(address _contract, uint _tokenId) external whenNotPaused {
-        require(marketState.getListing(_contract, _tokenId).owner == msg.sender || hasRole(MARKET_ADMIN, msg.sender), "Invalid token owner");
+        require(marketState.getListing(_contract, _tokenId).owner == msg.sender || hasRole(MARKET_ADMIN, msg.sender) || IERC721(_contract).ownerOf(_tokenId) == msg.sender, "Invalid token owner");
         marketState.removeListing(_contract, _tokenId);
         emit RemoveListing(_contract, _tokenId);
     }
@@ -61,10 +61,12 @@ bytes32 public constant MARKET_ADMIN = keccak256("MARKET_ADMIN");
     }
 
     function buyNFT(address _contract, uint _tokenId, address _currency, uint _price) external whenNotPaused {
+        require(marketState.validTokens(_currency) == true, "Currency not valid");
         MarketLib.Listing memory listing = marketState.getListing(_contract, _tokenId);
         require(listing.currency == _currency && listing.price == _price, "Price mis-match");
 
         MarketLib.ValidContract memory tokenContract = marketState.validContracts(_contract);
+        require(tokenContract.valid == true, "ERC721 contract not valid");
         _transferValue(_currency, _price,  tokenContract.feeAccount, tokenContract.feeRate, listing.owner);
         proxy.transferERC721(_contract, listing.owner, msg.sender, _tokenId);
 
@@ -73,10 +75,12 @@ bytes32 public constant MARKET_ADMIN = keccak256("MARKET_ADMIN");
     }
 
     function buyCampaignShares(address _contract, uint _campaignId, address _seller, uint _amount, address _currency, uint _unitPrice) external whenNotPaused {
+        require(marketState.validTokens(_currency) == true, "Currency not valid");
         MarketLib.CampaignListing memory listing = marketState.getCampaignListing(_contract, _campaignId, _seller);
         require(listing.amount == _amount && listing.currency == _currency && listing.unitPrice == _unitPrice, "Price mis-match");
 
         MarketLib.ValidContract memory tokenContract = marketState.validContracts(_contract);
+        require(tokenContract.valid == true, "ERC1155 contract not valid");
         _transferValue(_currency, _unitPrice * _amount,  tokenContract.feeAccount, tokenContract.feeRate, _seller);
         proxy.transferERC1155(_contract, listing.owner, msg.sender, _campaignId, _amount);
 
@@ -91,7 +95,7 @@ bytes32 public constant MARKET_ADMIN = keccak256("MARKET_ADMIN");
             amountAfterTax -= tax;
             proxy.transferERC20(_currency, msg.sender, taxAccount, tax);
         }
-        if(_feeRate != 0) {
+        if(_feeRate != 0 && _feeAccount != address(0)) {
             uint fee = (_price * _feeRate) / 100;
             amountAfterTax -= fee;
             proxy.transferERC20(_currency, msg.sender, _feeAccount, fee);
@@ -117,6 +121,9 @@ bytes32 public constant MARKET_ADMIN = keccak256("MARKET_ADMIN");
     }
 
     function setTaxAccount(address _taxAccount) external onlyRole(MARKET_ADMIN) {
+        if(taxRate != 0){
+            require(_taxAccount != address(0));
+        }
         taxAccount = _taxAccount;
     }
 
