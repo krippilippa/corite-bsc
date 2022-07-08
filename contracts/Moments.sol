@@ -11,9 +11,9 @@ contract Moments is ERC721, AccessControl {
     bytes32 public constant REDEEMER = keccak256("REDEEMER");
 
     ICNR private CNR;
-    mapping(uint => mapping(uint => bool)) isRedeemed;
+    mapping(uint => mapping(uint => bool)) public isRedeemed;
 
-    constructor(ICNR _CNR, address _default_admin_role) ERC721("Corite Moments", "CO-Moments") {
+    constructor(ICNR _CNR, address _default_admin_role) ERC721("WOW Moments by Corite", "WOW Moments") {
         CNR = _CNR;
         _setupRole(DEFAULT_ADMIN_ROLE, _default_admin_role);
     }
@@ -57,6 +57,7 @@ contract Moments is ERC721, AccessControl {
         for (uint256 i = 0; i <length; i++) {
             if(isRedeemed[_tokenId][_redeemIds[i]]) {
                a[nextIndex] = _redeemIds[i];
+               nextIndex++;
             }
         }
         return a;
@@ -64,7 +65,7 @@ contract Moments is ERC721, AccessControl {
     
     function tokenURI(uint _tokenId) override public view returns (string memory) {
         require(_exists(_tokenId), "ERC721Metadata: URI query for nonexistent token");
-        return ICNR(CNR).getNFTURI(address(this), _tokenId);
+        return CNR.getNFTURI(address(this), _tokenId);
     }
     
     function supportsInterface(bytes4 interfaceId) public view virtual override(ERC721, AccessControl) returns (bool) {

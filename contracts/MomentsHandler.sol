@@ -20,11 +20,12 @@ contract MomentsHandler is AccessControl, Pausable {
         uint maxPerUser;
         bool openMinting;
         bool closed;
+        bool ownerCanRedeem;
     }
 
     mapping (uint => GroupData) public groupData;
-    mapping (address => mapping (uint => uint)) hasMinted;
-    mapping (address => mapping (uint => bool)) canRedeem;
+    mapping (address => mapping (uint => uint)) public hasMinted;
+    mapping (address => mapping (uint => bool)) public canRedeem;
     mapping (address => bool) public validToken;
 
     event GroupCreated(uint groupId);
@@ -44,7 +45,8 @@ contract MomentsHandler is AccessControl, Pausable {
             amountCap: _maxAmount == 0 ? ((_groupId + 1) * maxGroupSize) - 1 : _groupId * maxGroupSize + _maxAmount,
             maxPerUser: _maxPerUser,
             openMinting: false,
-            closed: false
+            closed: false,
+            ownerCanRedeem: false
         });       
         emit GroupCreated(_groupId);
     }
@@ -93,11 +95,14 @@ contract MomentsHandler is AccessControl, Pausable {
         }
     }
 
-    function mintBatch(address _to, uint _groupId, uint _mintAmount) external onlyRole(ADMIN){
+    function mintForUserBatch(address[] calldata _to, uint _groupId, uint[] calldata _amounts) external onlyRole(ADMIN){
+        require(_to.length == _amounts.length, "Array length mismatch");
         _checkGroupIsOpen(_groupId);
-        _checkMintAmount(_groupId, _mintAmount);
-        for (uint256 i = 0; i < _mintAmount; i++) {
-            _mint(_to, _groupId);
+        for (uint256 i = 0; i < _to.length; i++) {
+            _checkMintAmount(_groupId, _amounts[i]);
+            for (uint256 j = 0; j < _amounts[i]; j++) {
+                _mint(_to[i], _groupId);
+            }
         }
     }
 
@@ -118,12 +123,16 @@ contract MomentsHandler is AccessControl, Pausable {
         groupData[_groupId].openMinting = _isOpen;
     }
 
+    function setOwnerCanRedeem(uint _groupId, bool _canRedeem) external onlyRole(ADMIN) {
+        groupData[_groupId].ownerCanRedeem = _canRedeem;
+    }
+
     function allowRedeem(address _address, uint _groupId, bool _allowed) external onlyRole(ADMIN) {
         canRedeem[_address][_groupId] = _allowed;
     }
 
-    function setRedeemed(uint _tokenId, uint _redeemId) external {
-        require(hasRole(ADMIN, msg.sender) || canRedeem[msg.sender][getGroupId(_tokenId)] || moments.ownerOf(_tokenId) == msg.sender, "Redeem access denied");
+    function setRedeemed(uint _tokenId, uint _redeemId) external whenNotPaused {
+        require(hasRole(ADMIN, msg.sender) || canRedeem[msg.sender][getGroupId(_tokenId)] || (moments.ownerOf(_tokenId) == msg.sender && groupData[getGroupId(_tokenId)].ownerCanRedeem == true), "Redeem access denied");
         moments.setRedeemed(_tokenId, _redeemId);
     }
 
