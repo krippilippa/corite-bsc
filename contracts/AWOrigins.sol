@@ -58,7 +58,11 @@ contract AWOrigins is ERC721Enumerable, AccessControl {
     function getLaunchpadSupply() view public returns (uint256) {
         return LAUNCH_SUPPLY;
     }
-    
+
+    function setLaunchpad(address _launchpad) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        LAUNCHPAD = _launchpad;
+    }
+
     function tokenURI(uint _tokenId) override public view returns (string memory) {
         require(_exists(_tokenId), "ERC721Metadata: URI query for nonexistent token");
         return ICNR(CNR).getNFTURI(address(this), _tokenId);
