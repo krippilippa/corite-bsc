@@ -48,6 +48,7 @@ describe("Test Marketplace", function () {
     await proxy.grantRole(HANDLER, market.address);
     await market.grantRole(MARKET_ADMIN, owner.address);
     await market.setValidToken(testCO.address, true);
+    await market.setValidToken("0x0000000000000000000000000000000000000000", true);
     await collection.setApprovalForAll(proxy.address, true);
     await campaign.setApprovalForAll(proxy.address, true);
     await campaign.connect(owner2).setApprovalForAll(proxy.address, true);
@@ -57,17 +58,24 @@ describe("Test Marketplace", function () {
 
   it("should add listings", async function () {
     for (let i = 0; i < 10; i++) {
+      await market.addListing(collection.address, i, "0x0000000000000000000000000000000000000000", 1000000 + 100000 * i);
+    }
+    for (let i = 10; i < 20; i++) {
       await market.addListing(collection.address, i, testCO.address, 1000000 + 100000 * i);
     }
-    console.log((await marketState.getListing(collection.address, 1)));
+    console.log((await marketState.getListing(collection.address, 2)));
     for (let i = 0; i < 10; i++) {
       await market.addCampaignListing(campaign.address, i, i * 10 + 10, testCO.address, 1000000 + 100000 * i);
       await market
         .connect(owner2)
         .addCampaignListing(campaign.address, i, i * 10 + 10, testCO.address, 1000000 + 100000 * i);
-       console.log((await marketState.getActiveCampaignListings(campaign.address, i, 0, 10)));
+      //  console.log((await marketState.getActiveCampaignListings(campaign.address, i, 0, 10)));
         //  console.log((await marketState.getActiveCampaignListings(campaign.address, i, 0, 10)).length);
     }
+
+    await market.connect(buyer).buyNFT(collection.address, 2, "0x0000000000000000000000000000000000000000", 1000000 + 100000 * 2, {value: 1000000 + 100000 * 2,});
+    await market.connect(buyer).buyNFT(collection.address, 12, testCO.address, 1000000 + 100000 * 12);
+
     // console.log((await marketState.getCampaignListing(campaign.address, 1, buyer.address)));
 
     // console.log(await marketState.getActiveCampaignListings(campaign.address, 5, 0, 6));

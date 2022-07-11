@@ -60,7 +60,7 @@ bytes32 public constant MARKET_ADMIN = keccak256("MARKET_ADMIN");
         emit RemoveCampaignListing(_contract, _tokenId, _owner);
     }
 
-    function buyNFT(address _contract, uint _tokenId, address _currency, uint _price) external whenNotPaused {
+    function buyNFT(address _contract, uint _tokenId, address _currency, uint _price) external payable whenNotPaused {
         require(marketState.validTokens(_currency) == true, "Currency not valid");
         MarketLib.Listing memory listing = marketState.getListing(_contract, _tokenId);
         require(listing.currency == _currency && listing.price == _price, "Price mis-match");
@@ -74,7 +74,7 @@ bytes32 public constant MARKET_ADMIN = keccak256("MARKET_ADMIN");
         emit BoughtNFT(_contract, _tokenId, listing.owner, msg.sender, _currency, _price);
     }
 
-    function buyCampaignShares(address _contract, uint _campaignId, address _seller, uint _amount, address _currency, uint _unitPrice) external whenNotPaused {
+    function buyCampaignShares(address _contract, uint _campaignId, address _seller, uint _amount, address _currency, uint _unitPrice) external payable whenNotPaused {
         require(marketState.validTokens(_currency) == true, "Currency not valid");
         MarketLib.CampaignListing memory listing = marketState.getCampaignListing(_contract, _campaignId, _seller);
         require(listing.amount == _amount && listing.currency == _currency && listing.unitPrice == _unitPrice, "Price mis-match");
@@ -89,18 +89,20 @@ bytes32 public constant MARKET_ADMIN = keccak256("MARKET_ADMIN");
     }
     
     function _transferValue( address _currency, uint _price, address _feeAccount, uint _feeRate, address _owner) internal {
+        bool nativeToken = _currency == address(0);
+        if(nativeToken){require(_price == msg.value);}
         uint amountAfterTax = _price;
         if(taxRate != 0) {
             uint tax = (_price * taxRate) / 100;
             amountAfterTax -= tax;
-            proxy.transferERC20(_currency, msg.sender, taxAccount, tax);
+            nativeToken ? _transferNativeToken(taxAccount, tax) : proxy.transferERC20(_currency, msg.sender, taxAccount, tax);
         }
         if(_feeRate != 0 && _feeAccount != address(0)) {
             uint fee = (_price * _feeRate) / 100;
             amountAfterTax -= fee;
-            proxy.transferERC20(_currency, msg.sender, _feeAccount, fee);
+            nativeToken ? _transferNativeToken(_feeAccount, fee) : proxy.transferERC20(_currency, msg.sender, _feeAccount, fee);
         }
-        proxy.transferERC20(_currency, msg.sender, _owner, amountAfterTax);
+        nativeToken ? _transferNativeToken(_owner, amountAfterTax) : proxy.transferERC20(_currency, msg.sender, _owner, amountAfterTax);
     }
 
     function setValidToken(address _token, bool _valid) external onlyRole(MARKET_ADMIN) {
@@ -125,6 +127,10 @@ bytes32 public constant MARKET_ADMIN = keccak256("MARKET_ADMIN");
             require(_taxAccount != address(0));
         }
         taxAccount = _taxAccount;
+    }
+    function _transferNativeToken(address _to, uint256 _amount) internal {
+        (bool sent, ) = _to.call{value: _amount}("");
+        require(sent, "Failed to transfer native token");
     }
 
     function pauseMarket() public onlyRole(MARKET_ADMIN) {
