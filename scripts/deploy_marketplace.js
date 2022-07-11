@@ -23,7 +23,7 @@ async function setSingleApproveProxy(admin) {
 }
 
 async function main() {
-  const default_admin = "";
+  const default_admin = "0x15f218814414fBE8255f085EE09EE6264437b51A";
 
   let proxy = await setSingleApproveProxy(default_admin);
   let marketState = await setMarketState(default_admin);
