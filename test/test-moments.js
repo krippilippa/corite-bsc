@@ -38,19 +38,20 @@ describe("Test Moments", function () {
     await testCO.connect(buyer).approve(momentsHandler.address, 1000000000);
   });
 
-  it("should claim NFT", async function () {
-    await momentsHandler.createGroup(1, 1000, 1);
-    await momentsHandler.setOpenMinting(1, true);
-    await momentsHandler.connect(buyer).claimNFT(1);
-    expect(await moments.ownerOf(1000000)).to.be.equal(buyer.address);
-    await momentsHandler.setRedeemed(1000000, 100);
-    console.log(await moments.getRedeemedList(1000000, [99, 100, 101]));
-  });
+//   it("should claim NFT", async function () {
+//     await momentsHandler.createGroup(1, 1000, 1);
+//     await momentsHandler.setOpenMinting(1, true);
+//     await momentsHandler.connect(buyer).claimNFT(1);
+//     expect(await moments.ownerOf(1000000)).to.be.equal(buyer.address);
+//     await momentsHandler.setRedeemed(1000000, 100);
+//     console.log(await moments.getRedeemedList(1000000, [99, 100, 101]));
+//   });
 
   it("should claim NFT with sig", async function () {
     await momentsHandler.createGroup(1, 1000, 1);
-    await momentsHandler.setOpenMinting(1, true);
-    await momentsHandler.connect(buyer).claimNFT(1);
-    expect(await moments.ownerOf(1000000)).to.be.equal(buyer.address);
+   // await momentsHandler.setOpenMinting(1, true);
+   // await momentsHandler.connect(buyer).claimNFT(1);
+   // expect(await moments.ownerOf(1000000)).to.be.equal(buyer.address);
+    await momentsHandler.mintForUser([buyer.address], 1);
   });
 });

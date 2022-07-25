@@ -49,6 +49,8 @@
 //      const { prefix, v, r, s } = await createSignature(obj);
 //      await originsHandler.connect(buyer).mintUserPay(6900, tokenAddress, tokenAmount, prefix, v, r, s);
 
+//      await originsHandler.mintFullGroup(6000, owner.address);
+
 //   //  await originsHandler.mintFullGroup(0, buyer.address);
  
 //     //  await expect(

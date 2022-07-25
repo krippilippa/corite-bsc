@@ -11,36 +11,38 @@ async function verify(contract, arr) {
   }
 }
 
-async function setMoments(CNR, admin) {
-  const Moments = await ethers.getContractFactory("Moments");
-  const moments = await Moments.deploy(CNR, admin);
+async function setMoments(CNR, launchpad, admin) {
+  const Moments = await ethers.getContractFactory("AWOrigins");
+  const moments = await Moments.deploy(CNR, launchpad, 7000, 500, admin);
   await moments.deployed();
-  await verify(moments.address, [CNR, admin]);
+  await verify(moments.address, [CNR, launchpad, 7000, 500, admin]);
   return moments;
 }
 
-async function setMomentsHandler(moments, admin) {
-  const MomentsHandler = await ethers.getContractFactory("MomentsHandler");
-  const momentsHandler = await MomentsHandler.deploy(moments.address, admin);
+async function setMomentsHandler(admin) {
+  const MomentsHandler = await ethers.getContractFactory("OriginsHandler");
+  const momentsHandler = await MomentsHandler.deploy("0xB1C4e4156A4bdDDC4CE7eB05109C677AC91b4228", 0, 70, admin);
   await momentsHandler.deployed();
-  await verify(momentsHandler.address, [moments.address, admin]);
+  await verify(momentsHandler.address, ["0xB1C4e4156A4bdDDC4CE7eB05109C677AC91b4228", 0, 70, admin]);
   return momentsHandler;
 }
 
 async function main() {
   const CNR = "0x254b3682d4b13CcBAF35d1b3142332b89F52FBa9";
   const default_admin = "0x823660e4f9895b3522AFF271A03Fd2E1800acADe";
- // const denWallet = "0x51e6a589dd3d829fbd720b2f8af68f881e2d4fc1";
- // const launchpad = "0x190449C9586a73dA40A839e875Ff55c853dBc2f8";
+  const denWallet = "0x51e6a589dd3d829fbd720b2f8af68f881e2d4fc1";
+  const launchpad = "0x190449C9586a73dA40A839e875Ff55c853dBc2f8";
+  const server = "0x61ce02dfC2Bd85d0edCC0a557C74db66935E28AA";
 
-  let moments = await setMoments(CNR, default_admin);
-  let momentsHandler = await setMomentsHandler(moments, default_admin);
-  let MINTER = await moments.MINTER();
-  let REDEEMER = await moments.REDEEMER();
-  await moments.grantRole(MINTER, momentsHandler.address);
-  await moments.grantRole(REDEEMER, momentsHandler.address);
-//  await momentsHandler.grantRole("0x0000000000000000000000000000000000000000000000000000000000000000", denWallet);
-  console.log(moments.address);
+ // let moments = await setMoments(CNR, launchpad, default_admin);
+  let momentsHandler = await setMomentsHandler(default_admin);
+  let SERVER = await momentsHandler.SERVER();
+  let ADMIN = await momentsHandler.ADMIN();
+  await momentsHandler.grantRole(SERVER, server);
+  await momentsHandler.grantRole(ADMIN, server);
+  await momentsHandler.grantRole(ADMIN, default_admin);
+  await momentsHandler.grantRole(ADMIN, denWallet);
+ // console.log(moments.address);
   console.log(momentsHandler.address);
 }
 
