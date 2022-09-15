@@ -110,7 +110,7 @@ contract TwoWeeksNotice {
 
     IERC20 private token;
 
-    constructor(IERC20 _token) public {
+    constructor(IERC20 _token) {
         token = _token;
     }
 
