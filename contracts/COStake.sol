@@ -27,7 +27,6 @@ contract COStake is AccessControl {
 
     function claimYield() external {
         uint claimableYield = estimateYield();
-        require(claimableYield > 0, "No claimable yield");
         claimedCO[msg.sender] += claimableYield;
         token.transfer(msg.sender, claimableYield);
     }
