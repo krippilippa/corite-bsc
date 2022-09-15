@@ -6,11 +6,11 @@ const { anyValue } = require("@nomicfoundation/hardhat-chai-matchers/withArgs");
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
 
-describe("COStakeReward", function () {
+describe("COStake", function () {
   // We define a fixture to reuse the same setup in every test.
   // We use loadFixture to run this setup once, snapshot that state,
   // and reset Hardhat Network to that snapshot in every test.
-  async function deployCOStakeReward() {
+  async function deployCOStake() {
     // Contracts are deployed using the first signer/account by default
     const [owner, otherAccount] = await ethers.getSigners();
 
@@ -26,24 +26,30 @@ describe("COStakeReward", function () {
 
     await twoWeeksNotice.deployed();
 
-    await testCO.increaseAllowance(twoWeeksNotice.address, 1000000000);
+    await testCO.increaseAllowance(twoWeeksNotice.address, 500000000);
     await twoWeeksNotice.stake(1000000 * 100, 500 * 86400);
 
-    const COStakeReward = await ethers.getContractFactory("COStakeReward");
-    const coStakeReward = await COStakeReward.deploy(twoWeeksNotice.address);
+    const COStake = await ethers.getContractFactory("COStake");
+    const coStake = await COStake.deploy(
+      twoWeeksNotice.address,
+      testCO.address
+    );
 
-    await coStakeReward.deployed();
-    return { coStakeReward, owner, otherAccount };
+    await coStake.deployed();
+    await testCO.transfer(coStake.address, 500000000);
+    await time.increaseTo((await time.latest()) + 365 * 86400);
+    return { coStake, owner, otherAccount };
   }
 
   describe("Basics", () => {
-    it("Should give reward", async () => {
-      const { coStakeReward, owner, otherAccount } = await loadFixture(
-        deployCOStakeReward
-      );
-      await time.increaseTo((await time.latest()) + 365 * 86400);
-      var reward = await coStakeReward.estimateReward();
-      console.log(reward / 1000000);
+    it("Should show yield", async () => {
+      const { coStake, owner, otherAccount } = await loadFixture(deployCOStake);
+      var yield = await coStake.estimateYield();
+      console.log(yield / 1000000);
+    });
+    it("Should let claim yield", async () => {
+      const { coStake, owner, otherAccount } = await loadFixture(deployCOStake);
+      await expect(coStake.claimYield()).to.not.be.reverted;
     });
   });
 });
