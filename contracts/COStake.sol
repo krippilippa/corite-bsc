@@ -5,6 +5,7 @@
 // SPDX-License-Identifier: MIT
 
 pragma solidity ^0.8.4;
+import "hardhat/console.sol";
 
 /**
  * @dev Interface of the ERC20 standard as defined in the EIP.
@@ -109,12 +110,15 @@ contract COStake {
 
     mapping(address => StakeState) private _states;
 
-    uint public yieldRate = 1460;
+    uint[] private yieldRates;
+    uint[] private yieldRateDates;
 
     IERC20 private token;
 
-    constructor(IERC20 _token) {
+    constructor(IERC20 _token, uint initialRate) {
         token = _token;
+        yieldRates.push(initialRate);
+        yieldRateDates.push(block.timestamp);
     }
 
     function getStakeState(address account)
@@ -132,7 +136,13 @@ contract COStake {
     }
 
     function setYieldRate(uint _yieldRate) public {
-        yieldRate = _yieldRate;
+        yieldRates.push(_yieldRate);
+        yieldRateDates.push(block.timestamp);
+    }
+
+    function pauseYield() external {
+        uint MAX_INT = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
+        setYieldRate(MAX_INT);
     }
 
     function getAccumulated(address account)
@@ -148,14 +158,14 @@ contract COStake {
         public
         view
         returns (
-            uint128,
-            uint128,
+            uint,
+            uint,
             uint
         )
     {
         StakeState storage ss = _states[account];
-        uint128 sum = ss.accumulated;
-        uint128 sumStrict = ss.accumulatedStrict;
+        uint sum = ss.accumulated;
+        uint sumStrict = ss.accumulatedStrict;
         uint yield = ss.accumulatedYield;
         if (ss.balance > 0) {
             uint256 until = block.timestamp;
@@ -163,13 +173,34 @@ contract COStake {
                 until = ss.lockedUntil;
             }
             if (until > ss.since) {
-                uint128 delta = uint128(
+                uint delta = uint128(
                     (uint256(ss.balance) * (until - ss.since)) / 86400
                 );
                 sum += delta;
                 if (ss.lockedUntil == 0) {
                     sumStrict += delta;
-                    yield += delta / yieldRate;
+                    uint last;
+                    for (uint i = 0; i < yieldRates.length; i++) {
+                        if (yieldRateDates[i] < ss.since) {
+                            continue;
+                        } else {
+                            last = yieldRateDates[i - 1] < ss.since
+                                ? ss.since
+                                : yieldRateDates[i - 1];
+                            delta =
+                                ((ss.balance * (yieldRateDates[i] - last)) /
+                                    86400) /
+                                yieldRates[i - 1];
+                            yield += delta;
+                        }
+                    }
+                    last = yieldRateDates[yieldRateDates.length - 1] < ss.since
+                        ? ss.since
+                        : yieldRateDates[yieldRateDates.length - 1];
+                    delta =
+                        ((ss.balance * (until - last)) / 86400) /
+                        yieldRates[yieldRates.length - 1];
+                    yield += delta;
                 }
             }
         }
@@ -183,13 +214,35 @@ contract COStake {
                 until = ss.lockedUntil;
             }
             if (until > ss.since) {
-                uint128 delta = uint128(
+                uint delta = uint128(
                     (uint256(ss.balance) * (until - ss.since)) / 86400
                 );
-                ss.accumulated += delta;
+                ss.accumulated += uint128(delta);
+
                 if (ss.lockedUntil == 0) {
-                    ss.accumulatedStrict += delta;
-                    ss.accumulatedYield += delta / yieldRate;
+                    ss.accumulatedStrict += uint128(delta);
+                    uint last;
+                    for (uint i = 0; i < yieldRates.length; i++) {
+                        if (yieldRateDates[i] < ss.since) {
+                            continue;
+                        } else {
+                            last = yieldRateDates[i - 1] < ss.since
+                                ? ss.since
+                                : yieldRateDates[i - 1];
+                            delta =
+                                ((ss.balance * (yieldRateDates[i] - last)) /
+                                    86400) /
+                                yieldRates[i - 1];
+                            ss.accumulatedYield += delta;
+                        }
+                    }
+                    last = yieldRateDates[yieldRateDates.length - 1] < ss.since
+                        ? ss.since
+                        : yieldRateDates[yieldRateDates.length - 1];
+                    delta =
+                        ((ss.balance * (until - last)) / 86400) /
+                        yieldRates[yieldRates.length - 1];
+                    ss.accumulatedYield += delta;
                 }
             }
         }
