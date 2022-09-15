@@ -21,37 +21,48 @@ describe("COStake", function () {
 
     await testCO.faucet();
 
-    const TwoWeeksNotice = await ethers.getContractFactory("TwoWeeksNotice");
-    const twoWeeksNotice = await TwoWeeksNotice.deploy(testCO.address);
-
-    await twoWeeksNotice.deployed();
-
-    await testCO.increaseAllowance(twoWeeksNotice.address, 500000000);
-    await twoWeeksNotice.stake(1000000 * 100, 14 * 86400);
-
     const COStake = await ethers.getContractFactory("COStake");
-    const coStake = await COStake.deploy(
-      twoWeeksNotice.address,
-      testCO.address
-    );
+    const coStake = await COStake.deploy(testCO.address);
 
     await coStake.deployed();
+
+    await testCO.increaseAllowance(coStake.address, 500000000);
+    await coStake.stake(1000000 * 100, 14 * 86400);
     await testCO.transfer(coStake.address, 500000000);
+
     await time.increaseTo((await time.latest()) + 365 * 86400);
-    return { coStake, twoWeeksNotice, owner, otherAccount };
+    return { coStake, owner, otherAccount };
   }
 
   describe("Basics", () => {
     it("Should show yield", async () => {
-      const { coStake, twoWeeksNotice, owner, otherAccount } =
-        await loadFixture(deployCOStake);
-      var yield = await coStake.estimateYield();
+      const { coStake, owner, otherAccount } = await loadFixture(deployCOStake);
+      var [sum, sumstrict, yield] = await coStake.estimateAccumulated(
+        owner.address
+      );
       console.log(yield / 1000000);
     });
     it("Should let claim yield", async () => {
-      const { coStake, twoWeeksNotice, owner, otherAccount } =
-        await loadFixture(deployCOStake);
+      const { coStake, owner, otherAccount } = await loadFixture(deployCOStake);
+      var [sum, sumstrict, yield] = await coStake.estimateAccumulated(
+        owner.address
+      );
+      console.log(yield / 1000000);
+
       await expect(coStake.claimYield()).to.not.be.reverted;
+
+      await time.increaseTo((await time.latest()) + 100 * 86400);
+      var [sum, sumstrict, yield] = await coStake.estimateAccumulated(
+        owner.address
+      );
+      console.log(yield / 1000000);
+      await expect(coStake.claimYield()).to.not.be.reverted;
+
+      await time.increaseTo((await time.latest()) + 22 * 86400);
+      var [sum, sumstrict, yield] = await coStake.estimateAccumulated(
+        owner.address
+      );
+      console.log(yield / 1000000);
     });
     // it("Should not let claim yield when claimable yield is 0", async () => {
     //   const { coStake, twoWeeksNotice, owner, otherAccount } =

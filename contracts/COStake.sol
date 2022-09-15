@@ -131,6 +131,10 @@ contract COStake {
         return (ss.balance, ss.unlockPeriod, ss.lockedUntil, ss.since);
     }
 
+    function setYieldRate(uint _yieldRate) public {
+        yieldRate = _yieldRate;
+    }
+
     function getAccumulated(address account)
         external
         view
@@ -248,12 +252,12 @@ contract COStake {
         emit StakeUpdate(msg.sender, 0);
     }
 
-    function estimateYield() public view returns (uint) {
-        return _states[msg.sender].accumulatedYield;
-    }
-
     function claimYield() external {
-        uint claimableYield = estimateYield();
-        token.transfer(msg.sender, claimableYield);
+        StakeState storage ss = _states[msg.sender];
+
+        updateAccumulated(ss);
+        ss.since = uint64(block.timestamp);
+        ss.accumulatedYield = 0;
+        token.transfer(msg.sender, ss.accumulatedYield);
     }
 }
