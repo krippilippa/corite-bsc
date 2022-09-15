@@ -27,7 +27,7 @@ describe("COStake", function () {
     await twoWeeksNotice.deployed();
 
     await testCO.increaseAllowance(twoWeeksNotice.address, 500000000);
-    await twoWeeksNotice.stake(1000000 * 100, 500 * 86400);
+    await twoWeeksNotice.stake(1000000 * 100, 14 * 86400);
 
     const COStake = await ethers.getContractFactory("COStake");
     const coStake = await COStake.deploy(
@@ -38,18 +38,27 @@ describe("COStake", function () {
     await coStake.deployed();
     await testCO.transfer(coStake.address, 500000000);
     await time.increaseTo((await time.latest()) + 365 * 86400);
-    return { coStake, owner, otherAccount };
+    return { coStake, twoWeeksNotice, owner, otherAccount };
   }
 
   describe("Basics", () => {
     it("Should show yield", async () => {
-      const { coStake, owner, otherAccount } = await loadFixture(deployCOStake);
+      const { coStake, twoWeeksNotice, owner, otherAccount } =
+        await loadFixture(deployCOStake);
       var yield = await coStake.estimateYield();
       console.log(yield / 1000000);
     });
     it("Should let claim yield", async () => {
-      const { coStake, owner, otherAccount } = await loadFixture(deployCOStake);
+      const { coStake, twoWeeksNotice, owner, otherAccount } =
+        await loadFixture(deployCOStake);
       await expect(coStake.claimYield()).to.not.be.reverted;
     });
+    // it("Should not let claim yield when claimable yield is 0", async () => {
+    //   const { coStake, twoWeeksNotice, owner, otherAccount } =
+    //     await loadFixture(deployCOStake);
+    //   await twoWeeksNotice.requestWithdraw();
+    //   await coStake.claimYield();
+    //   await expect(coStake.claimYield()).to.be.reverted;
+    // });
   });
 });
