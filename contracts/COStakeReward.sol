@@ -7,7 +7,7 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 import "../interfaces/ITwoWeeksNotice.sol";
 
-contract COStakeReward is AccessControl {
+contract COStake is AccessControl {
     ITwoWeeksNotice public twoWeeksNotice;
 
     constructor(ITwoWeeksNotice _twoWeeksNotice) {
@@ -18,7 +18,7 @@ contract COStakeReward is AccessControl {
         (uint128 accumulated, uint128 accumulatedStrict) = twoWeeksNotice
             .estimateAccumulated(msg.sender);
 
-        uint reward = accumulated / 1460;
+        uint reward = accumulatedStrict / 1460;
         return reward;
     }
 }
