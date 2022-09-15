@@ -22,7 +22,7 @@ describe("COStake", function () {
     await testCO.faucet();
 
     const COStake = await ethers.getContractFactory("COStake");
-    const coStake = await COStake.deploy(testCO.address);
+    const coStake = await COStake.deploy(testCO.address, 3650);
 
     await coStake.deployed();
 
@@ -34,42 +34,59 @@ describe("COStake", function () {
     return { coStake, owner, otherAccount };
   }
 
-  describe("Basics", () => {
-    it("Should show yield", async () => {
+  describe("Yield Staking", () => {
+    it("Should estimate yield correctly", async () => {
       const { coStake, owner, otherAccount } = await loadFixture(deployCOStake);
       var [sum, sumstrict, yield] = await coStake.estimateAccumulated(
         owner.address
       );
-      console.log(yield / 1000000);
+      expect(yield / 1000000).to.be.equal(10);
     });
     it("Should let claim yield", async () => {
       const { coStake, owner, otherAccount } = await loadFixture(deployCOStake);
       var [sum, sumstrict, yield] = await coStake.estimateAccumulated(
         owner.address
       );
-      console.log(yield / 1000000);
-
       await expect(coStake.claimYield()).to.not.be.reverted;
-
-      await time.increaseTo((await time.latest()) + 100 * 86400);
-      var [sum, sumstrict, yield] = await coStake.estimateAccumulated(
-        owner.address
-      );
-      console.log(yield / 1000000);
-      await expect(coStake.claimYield()).to.not.be.reverted;
-
-      await time.increaseTo((await time.latest()) + 22 * 86400);
-      var [sum, sumstrict, yield] = await coStake.estimateAccumulated(
-        owner.address
-      );
-      console.log(yield / 1000000);
     });
-    // it("Should not let claim yield when claimable yield is 0", async () => {
-    //   const { coStake, twoWeeksNotice, owner, otherAccount } =
-    //     await loadFixture(deployCOStake);
-    //   await twoWeeksNotice.requestWithdraw();
-    //   await coStake.claimYield();
-    //   await expect(coStake.claimYield()).to.be.reverted;
-    // });
+
+    it("Should set claimable yield to 0 when yield is claimed", async () => {
+      const { coStake, owner, otherAccount } = await loadFixture(deployCOStake);
+
+      await coStake.claimYield();
+
+      var [sum, sumstrict, yield] = await coStake.estimateAccumulated(
+        owner.address
+      );
+      expect(yield).to.be.equal(0);
+    });
+    it("Should give hold correct yield when yield rate changes", async () => {
+      const { coStake, owner, otherAccount } = await loadFixture(deployCOStake);
+      var [sum, sumstrict, yield] = await coStake.estimateAccumulated(
+        owner.address
+      );
+
+      await coStake.setYieldRate(1825);
+
+      await time.increaseTo((await time.latest()) + 365 * 86400);
+      var [sum, sumstrict, yield] = await coStake.estimateAccumulated(
+        owner.address
+      );
+      expect(yield / 1000000).to.be.equal(30);
+    });
+
+    it("Should not give yield when paused", async () => {
+      const { coStake, owner, otherAccount } = await loadFixture(deployCOStake);
+      var [sum, sumstrict, yield1] = await coStake.estimateAccumulated(
+        owner.address
+      );
+      await coStake.pauseYield();
+      await time.increaseTo((await time.latest()) + 365 * 86400);
+
+      var [sum, sumstrict, yield2] = await coStake.estimateAccumulated(
+        owner.address
+      );
+      expect(yield1).to.be.equal(yield2);
+    });
   });
 });
