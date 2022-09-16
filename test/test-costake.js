@@ -35,7 +35,7 @@ describe("COStake", function () {
     await testCO
       .connect(otherAccount)
       .increaseAllowance(coStake.address, 1000000000);
-    await coStake.stake(1000000 * 100, 14 * 86400);
+    await coStake.stake(1000000 * 100);
     await testCO.transfer(coStake.address, 500000000);
 
     await time.increaseTo((await time.latest()) + 365 * 86400);
@@ -140,7 +140,7 @@ describe("COStake", function () {
 
       await time.increaseTo((await time.latest()) + 365 * 86400);
 
-      await coStake.stake(1000000 * 150, 14 * 86400);
+      await coStake.stake(1000000 * 150);
 
       await time.increaseTo((await time.latest()) + 150 * 86400);
 
@@ -162,7 +162,7 @@ describe("COStake", function () {
       yield = Math.trunc((yield / 1000000) * 100) / 100;
       expect(yield).to.be.equal(54.33);
 
-      await coStake.stake(1000000 * 100, 14 * 86400);
+      await coStake.stake(1000000 * 100);
       await time.increaseTo((await time.latest()) + 365 * 86400);
       yield = await coStake.estimateAccumulatedYield(owner.address);
       yield = Math.trunc((yield / 1000000) * 100) / 100;
