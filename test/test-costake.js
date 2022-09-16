@@ -20,13 +20,21 @@ describe("COStake", function () {
     await testCO.deployed();
 
     await testCO.faucet();
+    await testCO.connect(otherAccount).faucet();
 
     const COStake = await ethers.getContractFactory("COStake");
-    const coStake = await COStake.deploy(testCO.address, 3650);
+    const coStake = await COStake.deploy(
+      testCO.address,
+      3650,
+      otherAccount.address
+    );
 
     await coStake.deployed();
 
     await testCO.increaseAllowance(coStake.address, 500000000);
+    await testCO
+      .connect(otherAccount)
+      .increaseAllowance(coStake.address, 1000000000);
     await coStake.stake(1000000 * 100, 14 * 86400);
     await testCO.transfer(coStake.address, 500000000);
 
