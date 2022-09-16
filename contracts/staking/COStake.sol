@@ -19,20 +19,39 @@ contract COStake is AccessControl {
         uint accumulatedYield; // how much unclaimed yield is available to the user
     }
 
+    address public yieldBank;
+
     event StakeUpdate(address indexed from, uint64 balance);
     event WithdrawRequest(address indexed from, uint64 until);
 
     mapping(address => StakeState) private _states;
 
-    uint[] private yieldRates; // the yield rates in the format of (1/yieldrate)*365, e.g. yield rate 10% is expressed as 3650. This is open for improvement.
-    uint[] private yieldRateDates; // the date in which the corresponding yieldrate was applied.
+    // denotes a change in yield
+    struct YieldPoint {
+        uint yieldRate; // New yield rate
+        uint timestamp; // timestamp of change
+    }
+    // Records the changes in the yieldrate
+    YieldPoint[] yieldTimeline;
 
     IERC20 private token;
 
-    constructor(IERC20 _token, uint initialRate) {
+    constructor(
+        IERC20 _token,
+        uint initialRate,
+        address _yieldBank
+    ) {
+        _setupRole(DEFAULT_ADMIN_ROLE, _msgSender());
         token = _token;
-        yieldRates.push(initialRate);
-        yieldRateDates.push(block.timestamp);
+        yieldTimeline.push(YieldPoint(initialRate, block.timestamp));
+        yieldBank = _yieldBank;
+    }
+
+    function setYieldBank(address _yieldBank)
+        public
+        onlyRole(DEFAULT_ADMIN_ROLE)
+    {
+        yieldBank = _yieldBank;
     }
 
     function getStakeState(address account)
@@ -49,13 +68,13 @@ contract COStake is AccessControl {
         return (ss.balance, ss.unlockPeriod, ss.lockedUntil, ss.since);
     }
 
-    function setYieldRate(uint _yieldRate) public {
-        yieldRates.push(_yieldRate);
-        yieldRateDates.push(block.timestamp);
+    function setYieldRate(uint _yieldRate) public onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(_yieldRate > 0, "Yield rate must be greater than 0");
+        yieldTimeline.push(YieldPoint(_yieldRate, block.timestamp));
     }
 
-    function pauseYield() external {
-        uint MAX_INT = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
+    function pauseYield() external onlyRole(DEFAULT_ADMIN_ROLE) {
+        uint MAX_INT = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff; // Since delta is divided by yieldrate, an "infinite" yieldrate sets the delta to 0 - aka 0% yield
         setYieldRate(MAX_INT);
     }
 
@@ -75,29 +94,31 @@ contract COStake is AccessControl {
                 if (ss.lockedUntil == 0) {
                     // below calculates the delta in yield since ss.since
                     uint last;
-                    for (uint i = 0; i < yieldRates.length; i++) {
+                    for (uint i = 0; i < yieldTimeline.length; i++) {
                         // find the earliest applicable yield rate based on ss.since and loop through all the
-                        // following yieldrates/dates
-                        if (yieldRateDates[i] < ss.since) {
+                        // following yieldTimeline/dates
+                        if (yieldTimeline[i].timestamp < ss.since) {
                             continue;
                         } else {
-                            last = yieldRateDates[i - 1] < ss.since
+                            last = yieldTimeline[i - 1].timestamp < ss.since
                                 ? ss.since
-                                : yieldRateDates[i - 1];
+                                : yieldTimeline[i - 1].timestamp;
                             delta =
-                                ((ss.balance * (yieldRateDates[i] - last)) /
+                                ((ss.balance *
+                                    (yieldTimeline[i].timestamp - last)) /
                                     86400) /
-                                yieldRates[i - 1]; // calculate the delta for a specific yield period
+                                yieldTimeline[i - 1].yieldRate; // calculate the delta for a specific yield period
                             yield += delta;
                         }
                     }
                     // finally calculate the delta of latest yield rate up to current date
-                    last = yieldRateDates[yieldRateDates.length - 1] < ss.since
+                    last = yieldTimeline[yieldTimeline.length - 1].timestamp <
+                        ss.since
                         ? ss.since
-                        : yieldRateDates[yieldRateDates.length - 1];
+                        : yieldTimeline[yieldTimeline.length - 1].timestamp;
                     delta =
                         ((ss.balance * (until - last)) / 86400) /
-                        yieldRates[yieldRates.length - 1];
+                        yieldTimeline[yieldTimeline.length - 1].yieldRate;
                     yield += delta;
                 }
             }
@@ -183,6 +204,6 @@ contract COStake is AccessControl {
         ss.since = uint64(block.timestamp);
         uint amount = ss.accumulatedYield;
         ss.accumulatedYield = 0;
-        token.transfer(msg.sender, amount);
+        token.transferFrom(yieldBank, msg.sender, amount);
     }
 }
