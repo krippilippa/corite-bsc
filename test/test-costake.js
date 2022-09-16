@@ -33,22 +33,50 @@ describe("COStake", function () {
     await time.increaseTo((await time.latest()) + 365 * 86400);
     return { coStake, testCO, owner, otherAccount };
   }
+  describe("Two weeks notice", () => {
+    it("Should not let withdraw early", async () => {
+      const { coStake, testCO, owner, otherAccount } = await loadFixture(
+        deployCOStake
+      );
+      await coStake.requestWithdraw();
+      await time.increaseTo((await time.latest()) + 5 * 86400);
 
+      await expect(coStake.withdraw(owner.address)).to.be.revertedWith(
+        "still locked"
+      );
+    });
+    it("Should not let withdraw without request", async () => {
+      const { coStake, testCO, owner, otherAccount } = await loadFixture(
+        deployCOStake
+      );
+
+      await expect(coStake.withdraw(owner.address)).to.be.revertedWith(
+        "unlock not requested"
+      );
+    });
+    it("Should let withdraw after two weeks", async () => {
+      const { coStake, testCO, owner, otherAccount } = await loadFixture(
+        deployCOStake
+      );
+      await coStake.requestWithdraw();
+      await time.increaseTo((await time.latest()) + 14 * 86400);
+
+      await expect(coStake.withdraw(owner.address)).to.not.be.revertedWith(
+        "still locked"
+      );
+    });
+  });
   describe("Yield Staking", () => {
     it("Should estimate yield correctly", async () => {
       const { coStake, owner, otherAccount } = await loadFixture(deployCOStake);
-      var [sum, sumstrict, yield] = await coStake.estimateAccumulated(
-        owner.address
-      );
+      var yield = await coStake.estimateAccumulatedYield(owner.address);
       expect(yield / 1000000).to.be.equal(10);
     });
     it("Should let claim yield", async () => {
       const { coStake, testCO, owner, otherAccount } = await loadFixture(
         deployCOStake
       );
-      var [sum, sumstrict, yield] = await coStake.estimateAccumulated(
-        owner.address
-      );
+      var yield = await coStake.estimateAccumulatedYield(owner.address);
       var initial_balance = await testCO.balanceOf(owner.address);
       await coStake.claimYield();
 
@@ -61,37 +89,26 @@ describe("COStake", function () {
 
       await coStake.claimYield();
 
-      var [sum, sumstrict, yield] = await coStake.estimateAccumulated(
-        owner.address
-      );
+      var yield = await coStake.estimateAccumulatedYield(owner.address);
       expect(yield).to.be.equal(0);
     });
     it("Should give hold correct yield when yield rate changes", async () => {
       const { coStake, owner, otherAccount } = await loadFixture(deployCOStake);
-      var [sum, sumstrict, yield] = await coStake.estimateAccumulated(
-        owner.address
-      );
 
       await coStake.setYieldRate(1825);
 
       await time.increaseTo((await time.latest()) + 365 * 86400);
-      var [sum, sumstrict, yield] = await coStake.estimateAccumulated(
-        owner.address
-      );
+      var yield = await coStake.estimateAccumulatedYield(owner.address);
       expect(yield / 1000000).to.be.equal(30);
     });
 
     it("Should not give yield when paused", async () => {
       const { coStake, owner, otherAccount } = await loadFixture(deployCOStake);
-      var [sum, sumstrict, yield1] = await coStake.estimateAccumulated(
-        owner.address
-      );
+      var yield1 = await coStake.estimateAccumulatedYield(owner.address);
       await coStake.pauseYield();
       await time.increaseTo((await time.latest()) + 365 * 86400);
 
-      var [sum, sumstrict, yield2] = await coStake.estimateAccumulated(
-        owner.address
-      );
+      var yield2 = await coStake.estimateAccumulatedYield(owner.address);
       expect(yield1).to.be.equal(yield2);
     });
 
@@ -99,9 +116,7 @@ describe("COStake", function () {
       const { coStake, testCO, owner, otherAccount } = await loadFixture(
         deployCOStake
       );
-      var [sum, sumstrict, yield] = await coStake.estimateAccumulated(
-        owner.address
-      );
+      var yield = await coStake.estimateAccumulatedYield(owner.address);
 
       await coStake.setYieldRate(1825);
 
@@ -125,9 +140,7 @@ describe("COStake", function () {
       await coStake.withdraw(owner.address);
       var following_balance = await testCO.balanceOf(owner.address);
 
-      var [sum, sumstrict, yield] = await coStake.estimateAccumulated(
-        owner.address
-      );
+      var yield = await coStake.estimateAccumulatedYield(owner.address);
       yield = Math.trunc((yield / 1000000) * 100) / 100;
       expect(yield).to.be.equal(54.33);
     });
