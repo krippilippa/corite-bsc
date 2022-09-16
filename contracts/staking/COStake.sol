@@ -14,7 +14,6 @@ contract COStake is AccessControl {
 
     struct StakeState {
         uint64 balance;
-        uint64 unlockPeriod; // time it takes from requesting withdraw to being able to withdraw
         uint64 lockedUntil; // 0 if withdraw is not requested
         uint64 since;
         uint accumulatedYield; // how much unclaimed yield is available to the user
@@ -27,6 +26,7 @@ contract COStake is AccessControl {
 
     mapping(address => StakeState) private _states;
     YieldPoint[] yieldTimeline; // Records the changes in the yieldrate
+    uint public unlockPeriod = 2 weeks;
 
     address public yieldBank; // wallet which holds yield rewards for users
 
@@ -64,12 +64,11 @@ contract COStake is AccessControl {
         returns (
             uint64,
             uint64,
-            uint64,
             uint64
         )
     {
         StakeState storage ss = _states[account];
-        return (ss.balance, ss.unlockPeriod, ss.lockedUntil, ss.since);
+        return (ss.balance, ss.lockedUntil, ss.since);
     }
 
     function calculateAccumulatedYield(StakeState storage ss)
@@ -134,22 +133,10 @@ contract COStake is AccessControl {
         ss.accumulatedYield = _accumulatedYield;
     }
 
-    function stake(uint64 amount, uint64 unlockPeriod) external {
+    function stake(uint64 amount) external {
         StakeState storage ss = _states[msg.sender];
         require(amount > 0, "amount must be positive");
         require(ss.balance <= amount, "cannot decrease balance");
-        require(
-            unlockPeriod <= 1000 days,
-            "unlockPeriod cannot be higher than 1000 days"
-        );
-        require(
-            ss.unlockPeriod <= unlockPeriod,
-            "cannot decrease unlock period"
-        );
-        require(
-            unlockPeriod >= 2 weeks,
-            "unlock period can't be less than 2 weeks"
-        );
 
         updateAccumulatedYield(ss);
 
@@ -162,7 +149,6 @@ contract COStake is AccessControl {
         }
 
         ss.balance = amount;
-        ss.unlockPeriod = unlockPeriod;
         ss.lockedUntil = 0;
         ss.since = uint64(block.timestamp);
         emit StakeUpdate(msg.sender, amount);
@@ -173,7 +159,7 @@ contract COStake is AccessControl {
         require(ss.balance > 0);
         updateAccumulatedYield(ss);
         ss.since = uint64(block.timestamp);
-        ss.lockedUntil = uint64(block.timestamp + ss.unlockPeriod);
+        ss.lockedUntil = uint64(block.timestamp + unlockPeriod);
     }
 
     function withdraw(address to) external {
@@ -184,7 +170,6 @@ contract COStake is AccessControl {
         updateAccumulatedYield(ss);
         uint128 balance = ss.balance;
         ss.balance = 0;
-        ss.unlockPeriod = 0;
         ss.lockedUntil = 0;
         ss.since = 0;
         require(token.transfer(to, balance), "transfer unsuccessful");
