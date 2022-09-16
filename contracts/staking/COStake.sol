@@ -41,8 +41,15 @@ contract COStake is AccessControl {
         yieldBank = _yieldBank;
     }
 
+    function setUnlockPeriod(uint _unlockPeriod)
+        external
+        onlyRole(DEFAULT_ADMIN_ROLE)
+    {
+        unlockPeriod = _unlockPeriod;
+    }
+
     function setYieldBank(address _yieldBank)
-        public
+        external
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
         yieldBank = _yieldBank;
@@ -160,6 +167,7 @@ contract COStake is AccessControl {
         updateAccumulatedYield(ss);
         ss.since = uint64(block.timestamp);
         ss.lockedUntil = uint64(block.timestamp + unlockPeriod);
+        emit WithdrawRequest(msg.sender, ss.lockedUntil);
     }
 
     function withdraw(address to) external {
