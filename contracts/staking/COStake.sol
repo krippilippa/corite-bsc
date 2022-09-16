@@ -16,8 +16,6 @@ contract COStake is AccessControl {
         uint64 unlockPeriod; // time it takes from requesting withdraw to being able to withdraw
         uint64 lockedUntil; // 0 if withdraw is not requested
         uint64 since;
-        uint128 accumulated; // token-days staked
-        uint128 accumulatedStrict; // token-days staked sans withdraw periods
         uint accumulatedYield; // how much unclaimed yield is available to the user
     }
 
@@ -61,39 +59,20 @@ contract COStake is AccessControl {
         setYieldRate(MAX_INT);
     }
 
-    function getAccumulated(address account)
-        external
-        view
-        returns (uint128, uint128)
-    {
-        StakeState storage ss = _states[account];
-        return (ss.accumulated, ss.accumulatedStrict);
-    }
-
-    function calculateAccumulated(StakeState storage ss)
+    function calculateAccumulatedYield(StakeState storage ss)
         internal
         view
-        returns (
-            uint,
-            uint,
-            uint
-        )
+        returns (uint)
     {
-        uint sum = ss.accumulated;
-        uint sumStrict = ss.accumulatedStrict;
         uint yield = ss.accumulatedYield;
         if (ss.balance > 0) {
             uint256 until = block.timestamp;
             if (ss.lockedUntil > 0 && ss.lockedUntil < block.timestamp) {
                 until = ss.lockedUntil;
             }
+            uint delta;
             if (until > ss.since) {
-                uint delta = uint128(
-                    (uint256(ss.balance) * (until - ss.since)) / 86400
-                );
-                sum += delta;
                 if (ss.lockedUntil == 0) {
-                    sumStrict += delta;
                     // below calculates the delta in yield since ss.since
                     uint last;
                     for (uint i = 0; i < yieldRates.length; i++) {
@@ -123,30 +102,20 @@ contract COStake is AccessControl {
                 }
             }
         }
-        return (sum, sumStrict, yield);
+        return (yield);
     }
 
-    function estimateAccumulated(address account)
+    function estimateAccumulatedYield(address account)
         public
         view
-        returns (
-            uint,
-            uint,
-            uint
-        )
+        returns (uint)
     {
         StakeState storage ss = _states[account];
-        return calculateAccumulated(ss);
+        return calculateAccumulatedYield(ss);
     }
 
-    function updateAccumulated(StakeState storage ss) private {
-        (
-            uint _accumulated,
-            uint _accumulatedStrict,
-            uint _accumulatedYield
-        ) = calculateAccumulated(ss);
-        ss.accumulated = uint128(_accumulated);
-        ss.accumulatedStrict = uint128(_accumulatedStrict);
+    function updateAccumulatedYield(StakeState storage ss) private {
+        uint _accumulatedYield = calculateAccumulatedYield(ss);
         ss.accumulatedYield = _accumulatedYield;
     }
 
@@ -167,7 +136,7 @@ contract COStake is AccessControl {
             "unlock period can't be less than 2 weeks"
         );
 
-        updateAccumulated(ss);
+        updateAccumulatedYield(ss);
 
         uint128 delta = amount - ss.balance;
         if (delta > 0) {
@@ -187,7 +156,7 @@ contract COStake is AccessControl {
     function requestWithdraw() external {
         StakeState storage ss = _states[msg.sender];
         require(ss.balance > 0);
-        updateAccumulated(ss);
+        updateAccumulatedYield(ss);
         ss.since = uint64(block.timestamp);
         ss.lockedUntil = uint64(block.timestamp + ss.unlockPeriod);
     }
@@ -197,7 +166,7 @@ contract COStake is AccessControl {
         require(ss.balance > 0, "must have tokens to withdraw");
         require(ss.lockedUntil != 0, "unlock not requested");
         require(ss.lockedUntil < block.timestamp, "still locked");
-        updateAccumulated(ss);
+        updateAccumulatedYield(ss);
         uint128 balance = ss.balance;
         ss.balance = 0;
         ss.unlockPeriod = 0;
@@ -210,7 +179,7 @@ contract COStake is AccessControl {
     function claimYield() external {
         StakeState storage ss = _states[msg.sender];
 
-        updateAccumulated(ss);
+        updateAccumulatedYield(ss);
         ss.since = uint64(block.timestamp);
         uint amount = ss.accumulatedYield;
         ss.accumulatedYield = 0;
