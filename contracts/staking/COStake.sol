@@ -9,9 +9,8 @@ pragma solidity ^0.8.4;
 // import "hardhat/console.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
-contract COStake is AccessControl, ReentrancyGuard {
+contract COStake is AccessControl {
     struct StakeState {
         uint64 balance;
         uint64 unlockPeriod; // time it takes from requesting withdraw to being able to withdraw
@@ -19,7 +18,7 @@ contract COStake is AccessControl, ReentrancyGuard {
         uint64 since;
         uint128 accumulated; // token-days staked
         uint128 accumulatedStrict; // token-days staked sans withdraw periods
-        uint accumulatedYield;
+        uint accumulatedYield; // how much unclaimed yield is available to the user
     }
 
     event StakeUpdate(address indexed from, uint64 balance);
@@ -27,8 +26,8 @@ contract COStake is AccessControl, ReentrancyGuard {
 
     mapping(address => StakeState) private _states;
 
-    uint[] private yieldRates;
-    uint[] private yieldRateDates;
+    uint[] private yieldRates; // the yield rates in the format of (1/yieldrate)*365, e.g. yield rate 10% is expressed as 3650. This is open for improvement.
+    uint[] private yieldRateDates; // the date in which the corresponding yieldrate was applied.
 
     IERC20 private token;
 
@@ -95,8 +94,11 @@ contract COStake is AccessControl, ReentrancyGuard {
                 sum += delta;
                 if (ss.lockedUntil == 0) {
                     sumStrict += delta;
+                    // below calculates the delta in yield since ss.since
                     uint last;
                     for (uint i = 0; i < yieldRates.length; i++) {
+                        // find the earliest applicable yield rate based on ss.since and loop through all the
+                        // following yieldrates/dates
                         if (yieldRateDates[i] < ss.since) {
                             continue;
                         } else {
@@ -106,10 +108,11 @@ contract COStake is AccessControl, ReentrancyGuard {
                             delta =
                                 ((ss.balance * (yieldRateDates[i] - last)) /
                                     86400) /
-                                yieldRates[i - 1];
+                                yieldRates[i - 1]; // calculate the delta for a specific yield period
                             yield += delta;
                         }
                     }
+                    // finally calculate the delta of latest yield rate up to current date
                     last = yieldRateDates[yieldRateDates.length - 1] < ss.since
                         ? ss.since
                         : yieldRateDates[yieldRateDates.length - 1];
@@ -204,12 +207,13 @@ contract COStake is AccessControl, ReentrancyGuard {
         emit StakeUpdate(msg.sender, 0);
     }
 
-    function claimYield() external nonReentrant {
+    function claimYield() external {
         StakeState storage ss = _states[msg.sender];
 
         updateAccumulated(ss);
         ss.since = uint64(block.timestamp);
-        token.transfer(msg.sender, ss.accumulatedYield);
+        uint amount = ss.accumulatedYield;
         ss.accumulatedYield = 0;
+        token.transfer(msg.sender, amount);
     }
 }
