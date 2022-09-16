@@ -94,5 +94,42 @@ describe("COStake", function () {
       );
       expect(yield1).to.be.equal(yield2);
     });
+
+    it("Messy test", async () => {
+      const { coStake, testCO, owner, otherAccount } = await loadFixture(
+        deployCOStake
+      );
+      var [sum, sumstrict, yield] = await coStake.estimateAccumulated(
+        owner.address
+      );
+
+      await coStake.setYieldRate(1825);
+
+      await time.increaseTo((await time.latest()) + 365 * 86400);
+
+      await coStake.stake(1000000 * 150, 14 * 86400);
+
+      await time.increaseTo((await time.latest()) + 150 * 86400);
+
+      await coStake.pauseYield();
+      await time.increaseTo((await time.latest()) + 365 * 86400);
+      await coStake.setYieldRate(1825);
+
+      await coStake.setYieldRate(4562);
+      await time.increaseTo((await time.latest()) + 365 * 86400);
+
+      await coStake.requestWithdraw();
+      await time.increaseTo((await time.latest()) + 14 * 86400);
+      var initial_balance = await testCO.balanceOf(owner.address);
+
+      await coStake.withdraw(owner.address);
+      var following_balance = await testCO.balanceOf(owner.address);
+
+      var [sum, sumstrict, yield] = await coStake.estimateAccumulated(
+        owner.address
+      );
+      yield = Math.trunc((yield / 1000000) * 100) / 100;
+      expect(yield).to.be.equal(54.33);
+    });
   });
 });
