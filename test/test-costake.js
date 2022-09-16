@@ -112,6 +112,16 @@ describe("COStake", function () {
       expect(yield1).to.be.equal(yield2);
     });
 
+    it("Should not give yield when withdrawing", async () => {
+      const { coStake, owner, otherAccount } = await loadFixture(deployCOStake);
+      var yield1 = await coStake.estimateAccumulatedYield(owner.address);
+      await coStake.requestWithdraw();
+      await time.increaseTo((await time.latest()) + 14 * 86400);
+
+      var yield2 = await coStake.estimateAccumulatedYield(owner.address);
+      expect(yield1).to.be.equal(yield2);
+    });
+
     it("Messy test", async () => {
       const { coStake, testCO, owner, otherAccount } = await loadFixture(
         deployCOStake
@@ -143,6 +153,12 @@ describe("COStake", function () {
       var yield = await coStake.estimateAccumulatedYield(owner.address);
       yield = Math.trunc((yield / 1000000) * 100) / 100;
       expect(yield).to.be.equal(54.33);
+
+      await coStake.stake(1000000 * 100, 14 * 86400);
+      await time.increaseTo((await time.latest()) + 365 * 86400);
+      yield = await coStake.estimateAccumulatedYield(owner.address);
+      yield = Math.trunc((yield / 1000000) * 100) / 100;
+      expect(yield).to.be.equal(54.33 + 8);
     });
   });
 });
