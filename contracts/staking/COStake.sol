@@ -1,7 +1,3 @@
-/**
- *Submitted for verification at Etherscan.io on 2020-11-09
- */
-
 // SPDX-License-Identifier: MIT
 
 pragma solidity ^0.8.4;
@@ -11,6 +7,11 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 
 contract COStake is AccessControl {
+    event StakeUpdate(address indexed from, uint64 balance);
+    event WithdrawRequest(address indexed from, uint64 until);
+
+    IERC20 private token;
+
     struct StakeState {
         uint64 balance;
         uint64 unlockPeriod; // time it takes from requesting withdraw to being able to withdraw
@@ -18,23 +19,16 @@ contract COStake is AccessControl {
         uint64 since;
         uint accumulatedYield; // how much unclaimed yield is available to the user
     }
-
-    address public yieldBank;
-
-    event StakeUpdate(address indexed from, uint64 balance);
-    event WithdrawRequest(address indexed from, uint64 until);
-
-    mapping(address => StakeState) private _states;
-
     // denotes a change in yield
     struct YieldPoint {
         uint yieldRate; // New yield rate
         uint timestamp; // timestamp of change
     }
-    // Records the changes in the yieldrate
-    YieldPoint[] yieldTimeline;
 
-    IERC20 private token;
+    mapping(address => StakeState) private _states;
+    YieldPoint[] yieldTimeline; // Records the changes in the yieldrate
+
+    address public yieldBank; // wallet which holds yield rewards for users
 
     constructor(
         IERC20 _token,
@@ -54,6 +48,16 @@ contract COStake is AccessControl {
         yieldBank = _yieldBank;
     }
 
+    function setYieldRate(uint _yieldRate) public onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(_yieldRate > 0, "Yield rate must be greater than 0");
+        yieldTimeline.push(YieldPoint(_yieldRate, block.timestamp));
+    }
+
+    function pauseYield() external onlyRole(DEFAULT_ADMIN_ROLE) {
+        uint MAX_INT = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff; // Since delta is divided by yieldrate, an "infinite" yieldrate sets the delta to 0 - aka 0% yield
+        setYieldRate(MAX_INT);
+    }
+
     function getStakeState(address account)
         external
         view
@@ -66,16 +70,6 @@ contract COStake is AccessControl {
     {
         StakeState storage ss = _states[account];
         return (ss.balance, ss.unlockPeriod, ss.lockedUntil, ss.since);
-    }
-
-    function setYieldRate(uint _yieldRate) public onlyRole(DEFAULT_ADMIN_ROLE) {
-        require(_yieldRate > 0, "Yield rate must be greater than 0");
-        yieldTimeline.push(YieldPoint(_yieldRate, block.timestamp));
-    }
-
-    function pauseYield() external onlyRole(DEFAULT_ADMIN_ROLE) {
-        uint MAX_INT = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff; // Since delta is divided by yieldrate, an "infinite" yieldrate sets the delta to 0 - aka 0% yield
-        setYieldRate(MAX_INT);
     }
 
     function calculateAccumulatedYield(StakeState storage ss)
