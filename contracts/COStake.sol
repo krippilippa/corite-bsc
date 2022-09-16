@@ -5,96 +5,13 @@
 // SPDX-License-Identifier: MIT
 
 pragma solidity ^0.8.4;
-import "hardhat/console.sol";
 
-/**
- * @dev Interface of the ERC20 standard as defined in the EIP.
- */
-interface IERC20 {
-    /**
-     * @dev Returns the amount of tokens in existence.
-     */
-    function totalSupply() external view returns (uint256);
+// import "hardhat/console.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/access/AccessControl.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
-    /**
-     * @dev Returns the amount of tokens owned by `account`.
-     */
-    function balanceOf(address account) external view returns (uint256);
-
-    /**
-     * @dev Moves `amount` tokens from the caller's account to `recipient`.
-     *
-     * Returns a boolean value indicating whether the operation succeeded.
-     *
-     * Emits a {Transfer} event.
-     */
-    function transfer(address recipient, uint256 amount)
-        external
-        returns (bool);
-
-    /**
-     * @dev Returns the remaining number of tokens that `spender` will be
-     * allowed to spend on behalf of `owner` through {transferFrom}. This is
-     * zero by default.
-     *
-     * This value changes when {approve} or {transferFrom} are called.
-     */
-    function allowance(address owner, address spender)
-        external
-        view
-        returns (uint256);
-
-    /**
-     * @dev Sets `amount` as the allowance of `spender` over the caller's tokens.
-     *
-     * Returns a boolean value indicating whether the operation succeeded.
-     *
-     * IMPORTANT: Beware that changing an allowance with this method brings the risk
-     * that someone may use both the old and the new allowance by unfortunate
-     * transaction ordering. One possible solution to mitigate this race
-     * condition is to first reduce the spender's allowance to 0 and set the
-     * desired value afterwards:
-     * https://github.com/ethereum/EIPs/issues/20#issuecomment-263524729
-     *
-     * Emits an {Approval} event.
-     */
-    function approve(address spender, uint256 amount) external returns (bool);
-
-    /**
-     * @dev Moves `amount` tokens from `sender` to `recipient` using the
-     * allowance mechanism. `amount` is then deducted from the caller's
-     * allowance.
-     *
-     * Returns a boolean value indicating whether the operation succeeded.
-     *
-     * Emits a {Transfer} event.
-     */
-    function transferFrom(
-        address sender,
-        address recipient,
-        uint256 amount
-    ) external returns (bool);
-
-    /**
-     * @dev Emitted when `value` tokens are moved from one account (`from`) to
-     * another (`to`).
-     *
-     * Note that `value` may be zero.
-     */
-    event Transfer(address indexed from, address indexed to, uint256 value);
-
-    /**
-     * @dev Emitted when the allowance of a `spender` for an `owner` is set by
-     * a call to {approve}. `value` is the new allowance.
-     */
-    event Approval(
-        address indexed owner,
-        address indexed spender,
-        uint256 value
-    );
-}
-
-contract COStake {
+contract COStake is AccessControl, ReentrancyGuard {
     struct StakeState {
         uint64 balance;
         uint64 unlockPeriod; // time it takes from requesting withdraw to being able to withdraw
@@ -154,8 +71,8 @@ contract COStake {
         return (ss.accumulated, ss.accumulatedStrict);
     }
 
-    function estimateAccumulated(address account)
-        public
+    function calculateAccumulated(StakeState storage ss)
+        internal
         view
         returns (
             uint,
@@ -163,7 +80,6 @@ contract COStake {
             uint
         )
     {
-        StakeState storage ss = _states[account];
         uint sum = ss.accumulated;
         uint sumStrict = ss.accumulatedStrict;
         uint yield = ss.accumulatedYield;
@@ -207,45 +123,28 @@ contract COStake {
         return (sum, sumStrict, yield);
     }
 
-    function updateAccumulated(StakeState storage ss) private {
-        if (ss.balance > 0) {
-            uint256 until = block.timestamp;
-            if (ss.lockedUntil > 0 && ss.lockedUntil < block.timestamp) {
-                until = ss.lockedUntil;
-            }
-            if (until > ss.since) {
-                uint delta = uint128(
-                    (uint256(ss.balance) * (until - ss.since)) / 86400
-                );
-                ss.accumulated += uint128(delta);
+    function estimateAccumulated(address account)
+        public
+        view
+        returns (
+            uint,
+            uint,
+            uint
+        )
+    {
+        StakeState storage ss = _states[account];
+        return calculateAccumulated(ss);
+    }
 
-                if (ss.lockedUntil == 0) {
-                    ss.accumulatedStrict += uint128(delta);
-                    uint last;
-                    for (uint i = 0; i < yieldRates.length; i++) {
-                        if (yieldRateDates[i] < ss.since) {
-                            continue;
-                        } else {
-                            last = yieldRateDates[i - 1] < ss.since
-                                ? ss.since
-                                : yieldRateDates[i - 1];
-                            delta =
-                                ((ss.balance * (yieldRateDates[i] - last)) /
-                                    86400) /
-                                yieldRates[i - 1];
-                            ss.accumulatedYield += delta;
-                        }
-                    }
-                    last = yieldRateDates[yieldRateDates.length - 1] < ss.since
-                        ? ss.since
-                        : yieldRateDates[yieldRateDates.length - 1];
-                    delta =
-                        ((ss.balance * (until - last)) / 86400) /
-                        yieldRates[yieldRates.length - 1];
-                    ss.accumulatedYield += delta;
-                }
-            }
-        }
+    function updateAccumulated(StakeState storage ss) private {
+        (
+            uint _accumulated,
+            uint _accumulatedStrict,
+            uint _accumulatedYield
+        ) = calculateAccumulated(ss);
+        ss.accumulated = uint128(_accumulated);
+        ss.accumulatedStrict = uint128(_accumulatedStrict);
+        ss.accumulatedYield = _accumulatedYield;
     }
 
     function stake(uint64 amount, uint64 unlockPeriod) external {
@@ -305,12 +204,12 @@ contract COStake {
         emit StakeUpdate(msg.sender, 0);
     }
 
-    function claimYield() external {
+    function claimYield() external nonReentrant {
         StakeState storage ss = _states[msg.sender];
 
         updateAccumulated(ss);
         ss.since = uint64(block.timestamp);
-        ss.accumulatedYield = 0;
         token.transfer(msg.sender, ss.accumulatedYield);
+        ss.accumulatedYield = 0;
     }
 }

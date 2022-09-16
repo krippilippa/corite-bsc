@@ -31,7 +31,7 @@ describe("COStake", function () {
     await testCO.transfer(coStake.address, 500000000);
 
     await time.increaseTo((await time.latest()) + 365 * 86400);
-    return { coStake, owner, otherAccount };
+    return { coStake, testCO, owner, otherAccount };
   }
 
   describe("Yield Staking", () => {
@@ -43,11 +43,17 @@ describe("COStake", function () {
       expect(yield / 1000000).to.be.equal(10);
     });
     it("Should let claim yield", async () => {
-      const { coStake, owner, otherAccount } = await loadFixture(deployCOStake);
+      const { coStake, testCO, owner, otherAccount } = await loadFixture(
+        deployCOStake
+      );
       var [sum, sumstrict, yield] = await coStake.estimateAccumulated(
         owner.address
       );
-      await expect(coStake.claimYield()).to.not.be.reverted;
+      var initial_balance = await testCO.balanceOf(owner.address);
+      await coStake.claimYield();
+
+      var following_balance = await testCO.balanceOf(owner.address);
+      await expect(following_balance - initial_balance).to.be.equal(yield);
     });
 
     it("Should set claimable yield to 0 when yield is claimed", async () => {
