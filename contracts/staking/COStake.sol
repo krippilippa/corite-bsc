@@ -2,7 +2,6 @@
 
 pragma solidity ^0.8.4;
 
-import "hardhat/console.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 
@@ -20,7 +19,7 @@ contract COStake is AccessControl {
     }
     // denotes a change in yield
     struct YieldPoint {
-        uint yieldRate; // New yield rate
+        uint yieldRate; // New yield rate in the format of (1/percentage)*365
         uint timestamp; // timestamp of change
     }
 
