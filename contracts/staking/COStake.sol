@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.4;
 
-// import "hardhat/console.sol";
+import "hardhat/console.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 
@@ -94,31 +94,38 @@ contract COStake is AccessControl {
                 if (ss.lockedUntil == 0) {
                     // below calculates the delta in yield since ss.since
                     uint last;
-                    for (uint i = 0; i < yieldTimeline.length; i++) {
-                        // find the earliest applicable yield rate based on ss.since and loop through all the
-                        // following yieldTimeline/dates
-                        if (yieldTimeline[i].timestamp < ss.since) {
-                            continue;
-                        } else {
-                            last = yieldTimeline[i - 1].timestamp < ss.since
-                                ? ss.since
-                                : yieldTimeline[i - 1].timestamp;
-                            delta =
-                                ((ss.balance *
-                                    (yieldTimeline[i].timestamp - last)) /
-                                    86400) /
-                                yieldTimeline[i - 1].yieldRate; // calculate the delta for a specific yield period
-                            yield += delta;
+                    YieldPoint memory mostRecentYield = yieldTimeline[
+                        yieldTimeline.length - 1
+                    ];
+                    if (ss.since < mostRecentYield.timestamp) {
+                        for (uint i = 0; i < yieldTimeline.length; i++) {
+                            // find the earliest applicable yield rate based on ss.since and loop through all the
+                            // following yieldTimeline/dates
+                            if (yieldTimeline[i].timestamp < ss.since) {
+                                continue;
+                            } else {
+                                YieldPoint memory prevYield = yieldTimeline[
+                                    i - 1
+                                ];
+                                last = prevYield.timestamp < ss.since
+                                    ? ss.since
+                                    : prevYield.timestamp;
+                                delta =
+                                    ((ss.balance *
+                                        (yieldTimeline[i].timestamp - last)) /
+                                        86400) /
+                                    prevYield.yieldRate; // calculate the delta for a specific yield period
+                                yield += delta;
+                            }
                         }
                     }
                     // finally calculate the delta of latest yield rate up to current date
-                    last = yieldTimeline[yieldTimeline.length - 1].timestamp <
-                        ss.since
+                    last = mostRecentYield.timestamp < ss.since
                         ? ss.since
-                        : yieldTimeline[yieldTimeline.length - 1].timestamp;
+                        : mostRecentYield.timestamp;
                     delta =
                         ((ss.balance * (until - last)) / 86400) /
-                        yieldTimeline[yieldTimeline.length - 1].yieldRate;
+                        mostRecentYield.yieldRate;
                     yield += delta;
                 }
             }
