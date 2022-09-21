@@ -5,7 +5,7 @@ require("@nomiclabs/hardhat-etherscan");
 require('hardhat-contract-sizer');
 
 const BSCTESTNET_PRIVATE_KEY = process.env.BSCTESTNET_PRIVATE_KEY;
-const MORALIS = process.env.MORALIS;
+const RPC_NODE = process.env.RPC_NODE;
 const BSCSCAN_API_KEY = process.env.BSCSCAN_API_KEY;
 
 
@@ -20,12 +20,12 @@ module.exports = {
       allowUnlimitedContractSize:true,
     },
     BSCTestnet: {
-      url: `${MORALIS}`,
+      url: `${RPC_NODE}`,
       accounts: [`0x${BSCTESTNET_PRIVATE_KEY}`],
       allowUnlimitedContractSize:true,
     },
     BSCMainnet: {
-      url: `${process.env.MORALISMAINNET}`,
+      url: `${process.env.RPC_NODE_MAINNET}`,
       accounts: [`0x${process.env.BSCMAINNET_PRIVATE_KEY}`],
       allowUnlimitedContractSize:true,
     }, 
