@@ -128,6 +128,19 @@ describe("COStake", function () {
       var yield2 = await coStake.estimateAccumulatedYield(owner.address);
       expect(yield1).to.be.equal(yield2);
     });
+    it("Should claim balance and yield at the same time", async () => {
+      const { coStake, owner, otherAccount } = await loadFixture(deployCOStake);
+
+      var yield = await coStake.estimateAccumulatedYield(owner.address);
+      var [balance, a, b] = await coStake.getStakeState(owner.address);
+      await coStake.requestWithdraw();
+      await time.increaseTo((await time.latest()) + 14 * 86400);
+      await coStake.withdrawAndClaimYield(owner.address);
+      var yield = await coStake.estimateAccumulatedYield(owner.address);
+      var [balance, a, b] = await coStake.getStakeState(owner.address);
+      expect(yield).to.be.equal(0);
+      expect(balance).to.be.equal(0);
+    });
 
     it("Messy test", async () => {
       const { coStake, testCO, owner, otherAccount } = await loadFixture(
