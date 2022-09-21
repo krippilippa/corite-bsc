@@ -31,12 +31,12 @@ contract COStake is AccessControl {
 
     constructor(
         IERC20 _token,
-        uint initialRate,
+        uint _initialRate,
         address _yieldBank
     ) {
         _setupRole(DEFAULT_ADMIN_ROLE, _msgSender());
         token = _token;
-        yieldTimeline.push(YieldPoint(initialRate, block.timestamp));
+        yieldTimeline.push(YieldPoint(_initialRate, block.timestamp));
         yieldBank = _yieldBank;
     }
 
@@ -182,10 +182,31 @@ contract COStake is AccessControl {
         require(ss.lockedUntil != 0, "unlock not requested");
         require(ss.lockedUntil < block.timestamp, "still locked");
         updateAccumulatedYield(ss);
+
         uint128 balance = ss.balance;
         ss.balance = 0;
         ss.lockedUntil = 0;
         ss.since = 0;
+
+        require(token.transfer(to, balance), "transfer unsuccessful");
+        emit StakeUpdate(msg.sender, 0);
+    }
+
+    function withdrawAndClaimYield(address to) external {
+        StakeState storage ss = _states[msg.sender];
+        require(ss.balance > 0, "must have tokens to withdraw");
+        require(ss.lockedUntil != 0, "unlock not requested");
+        require(ss.lockedUntil < block.timestamp, "still locked");
+        updateAccumulatedYield(ss);
+
+        uint128 balance = ss.balance;
+        ss.balance = 0;
+        ss.lockedUntil = 0;
+        ss.since = 0;
+        uint yield = ss.accumulatedYield;
+        ss.accumulatedYield = 0;
+
+        token.transferFrom(yieldBank, to, yield);
         require(token.transfer(to, balance), "transfer unsuccessful");
         emit StakeUpdate(msg.sender, 0);
     }
