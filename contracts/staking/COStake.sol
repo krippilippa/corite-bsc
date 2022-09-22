@@ -9,7 +9,7 @@ import "@openzeppelin/contracts/security/Pausable.sol";
 contract COStake is AccessControl, Pausable {
     event StakeUpdate(address indexed from, uint64 balance);
     event WithdrawRequest(address indexed from, uint64 until);
-    event ClaimYield(address indexed from, uint amount);
+    event ClaimYield(address indexed from, uint64 amount);
 
     IERC20 private immutable token;
 
@@ -17,12 +17,12 @@ contract COStake is AccessControl, Pausable {
         uint64 balance;
         uint64 lockedUntil; // 0 if withdraw is not requested
         uint64 since;
-        uint accumulatedYield; // how much unclaimed yield is available to the user
+        uint64 accumulatedYield; // how much unclaimed yield is available to the user
     }
     // denotes a change in yield
     struct YieldPoint {
-        uint yieldRate; // New yield rate in the format of (1/percentage)*365
-        uint timestamp; // timestamp of change
+        uint128 yieldRate; // New yield rate in the format of (1/percentage)*365
+        uint128 timestamp; // timestamp of change
     }
 
     mapping(address => StakeState) private _states;
@@ -33,13 +33,13 @@ contract COStake is AccessControl, Pausable {
 
     constructor(
         IERC20 _token,
-        uint _initialRate,
+        uint128 _initialRate,
         address _yieldBank,
         address _default_admin
     ) {
         _setupRole(DEFAULT_ADMIN_ROLE, _default_admin);
         token = _token;
-        yieldTimeline.push(YieldPoint(_initialRate, block.timestamp));
+        yieldTimeline.push(YieldPoint(_initialRate, uint128(block.timestamp)));
         yieldBank = _yieldBank;
     }
 
@@ -55,6 +55,7 @@ contract COStake is AccessControl, Pausable {
         external
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
+        require(unlockPeriod < 52 weeks, "Unlock period must be under 1 year");
         unlockPeriod = _unlockPeriod;
     }
 
@@ -65,14 +66,16 @@ contract COStake is AccessControl, Pausable {
         yieldBank = _yieldBank;
     }
 
-    function setYieldRate(uint _yieldRate) public onlyRole(DEFAULT_ADMIN_ROLE) {
+    function setYieldRate(uint128 _yieldRate)
+        public
+        onlyRole(DEFAULT_ADMIN_ROLE)
+    {
         require(_yieldRate > 0, "Yield rate must be greater than 0");
-        yieldTimeline.push(YieldPoint(_yieldRate, block.timestamp));
+        yieldTimeline.push(YieldPoint(_yieldRate, uint128(block.timestamp)));
     }
 
     function pauseYield() external onlyRole(DEFAULT_ADMIN_ROLE) {
-        uint MAX_INT = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff; // Since delta is divided by yieldrate, an "infinite" yieldrate sets the delta to 0 - aka 0% yield
-        setYieldRate(MAX_INT);
+        setYieldRate(type(uint128).max);
     }
 
     function getStakeState(address account)
@@ -91,15 +94,15 @@ contract COStake is AccessControl, Pausable {
     function calculateAccumulatedYield(StakeState memory ss)
         internal
         view
-        returns (uint)
+        returns (uint64)
     {
-        uint yield = ss.accumulatedYield;
+        uint64 yield = ss.accumulatedYield;
         if (ss.balance > 0) {
             uint256 until = block.timestamp;
             if (ss.lockedUntil > 0 && ss.lockedUntil < block.timestamp) {
                 until = ss.lockedUntil;
             }
-            uint delta;
+            uint64 delta;
             if (until > ss.since) {
                 if (ss.lockedUntil == 0) {
                     // below calculates the delta in yield since ss.since
@@ -120,11 +123,11 @@ contract COStake is AccessControl, Pausable {
                                 last = prevYield.timestamp < ss.since
                                     ? ss.since
                                     : prevYield.timestamp;
-                                delta =
+                                delta = uint64(
                                     ((ss.balance *
                                         (yieldTimeline[i].timestamp - last)) /
-                                        86400) /
-                                    prevYield.yieldRate; // calculate the delta for a specific yield period
+                                        86400) / prevYield.yieldRate
+                                ); // calculate the delta for a specific yield period
                                 yield += delta;
                             }
                         }
@@ -133,9 +136,10 @@ contract COStake is AccessControl, Pausable {
                     last = mostRecentYield.timestamp < ss.since
                         ? ss.since
                         : mostRecentYield.timestamp;
-                    delta =
+                    delta = uint64(
                         ((ss.balance * (until - last)) / 86400) /
-                        mostRecentYield.yieldRate;
+                            mostRecentYield.yieldRate
+                    );
                     yield += delta;
                 }
             }
@@ -231,7 +235,7 @@ contract COStake is AccessControl, Pausable {
         updateAccumulatedYield(ss);
 
         ss.since = uint64(block.timestamp);
-        uint amount = ss.accumulatedYield;
+        uint64 amount = ss.accumulatedYield;
         ss.accumulatedYield = 0;
         token.transferFrom(yieldBank, msg.sender, amount);
 
