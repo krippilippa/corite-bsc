@@ -48,16 +48,14 @@ describe("COStake", function () {
       await coStake.requestWithdraw();
       await time.increaseTo((await time.latest()) + 5 * 86400);
 
-      await expect(coStake.withdraw(owner.address)).to.be.revertedWith(
-        "still locked"
-      );
+      await expect(coStake.withdraw()).to.be.revertedWith("still locked");
     });
     it("Should not let withdraw without request", async () => {
       const { coStake, testCO, owner, otherAccount } = await loadFixture(
         deployCOStake
       );
 
-      await expect(coStake.withdraw(owner.address)).to.be.revertedWith(
+      await expect(coStake.withdraw()).to.be.revertedWith(
         "unlock not requested"
       );
     });
@@ -68,9 +66,7 @@ describe("COStake", function () {
       await coStake.requestWithdraw();
       await time.increaseTo((await time.latest()) + 14 * 86400);
 
-      await expect(coStake.withdraw(owner.address)).to.not.be.revertedWith(
-        "still locked"
-      );
+      await expect(coStake.withdraw()).to.not.be.revertedWith("still locked");
     });
   });
   describe("Pause", () => {
@@ -144,7 +140,7 @@ describe("COStake", function () {
       var [balance, a, b] = await coStake.getStakeState(owner.address);
       await coStake.requestWithdraw();
       await time.increaseTo((await time.latest()) + 14 * 86400);
-      await coStake.withdrawAndClaimYield(owner.address);
+      await coStake.withdrawAndClaimYield();
       var yield = await coStake.estimateAccumulatedYield(owner.address);
       var [balance, a, b] = await coStake.getStakeState(owner.address);
       expect(yield).to.be.equal(0);
@@ -176,7 +172,7 @@ describe("COStake", function () {
       await time.increaseTo((await time.latest()) + 14 * 86400);
       var initial_balance = await testCO.balanceOf(owner.address);
 
-      await coStake.withdraw(owner.address);
+      await coStake.withdraw();
       var following_balance = await testCO.balanceOf(owner.address);
 
       var yield = await coStake.estimateAccumulatedYield(owner.address);
