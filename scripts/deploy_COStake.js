@@ -1,15 +1,15 @@
 const hre = require("hardhat");
 
 async function main() {
-  const TestCO = await hre.ethers.getContractFactory("TestCO");
-  const testCO = await TestCO.deploy();
+  // const TestCO = await hre.ethers.getContractFactory("TestCO");
+  // const testCO = await TestCO.deploy();
 
-  await testCO.deployed();
-  console.log(`testCO deployed to ${testCO.address}`);
+  // await testCO.deployed();
+  // console.log(`testCO deployed to ${testCO.address}`);
 
   const COStake = await hre.ethers.getContractFactory("COStake");
   const cOStake = await COStake.deploy(
-    testCO.address,
+    "0x6ee5DA30876E1697cD4Fc217d2A8a44D5A53A77d",
     3650,
     "0xd4354fB989df7F2b1d034B9AF682A77bA3C19B48"
   );

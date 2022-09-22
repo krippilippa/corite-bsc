@@ -4,8 +4,9 @@ pragma solidity ^0.8.4;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
+import "@openzeppelin/contracts/security/Pausable.sol";
 
-contract COStake is AccessControl {
+contract COStake is AccessControl, Pausable {
     event StakeUpdate(address indexed from, uint64 balance);
     event WithdrawRequest(address indexed from, uint64 until);
 
@@ -38,6 +39,14 @@ contract COStake is AccessControl {
         token = _token;
         yieldTimeline.push(YieldPoint(_initialRate, block.timestamp));
         yieldBank = _yieldBank;
+    }
+
+    function pauseHandler() public onlyRole(DEFAULT_ADMIN_ROLE) {
+        _pause();
+    }
+
+    function unpauseHandler() public onlyRole(DEFAULT_ADMIN_ROLE) {
+        _unpause();
     }
 
     function setUnlockPeriod(uint _unlockPeriod)
@@ -146,7 +155,7 @@ contract COStake is AccessControl {
         ss.accumulatedYield = _accumulatedYield;
     }
 
-    function stake(uint64 amount) external {
+    function stake(uint64 amount) external whenNotPaused {
         StakeState storage ss = _states[msg.sender];
         require(amount > 0, "amount must be positive");
         require(ss.balance <= amount, "cannot decrease balance");

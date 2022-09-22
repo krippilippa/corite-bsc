@@ -73,6 +73,15 @@ describe("COStake", function () {
       );
     });
   });
+  describe("Pause", () => {
+    it("Should not let stake when paused", async () => {
+      const { coStake, testCO, owner, otherAccount } = await loadFixture(
+        deployCOStake
+      );
+      await coStake.pauseHandler();
+      await expect(coStake.stake(100)).to.be.reverted;
+    });
+  });
   describe("Yield Staking", () => {
     it("Should estimate yield correctly", async () => {
       const { coStake, owner, otherAccount } = await loadFixture(deployCOStake);
