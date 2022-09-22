@@ -87,7 +87,7 @@ contract COStake is AccessControl, Pausable {
         return (ss.balance, ss.lockedUntil, ss.since);
     }
 
-    function calculateAccumulatedYield(StakeState storage ss)
+    function calculateAccumulatedYield(StakeState memory ss)
         internal
         view
         returns (uint)
@@ -160,7 +160,6 @@ contract COStake is AccessControl, Pausable {
         StakeState storage ss = _states[msg.sender];
         require(amount > 0, "amount must be positive");
         require(ss.balance <= amount, "cannot decrease balance");
-
         updateAccumulatedYield(ss);
 
         uint128 delta = amount - ss.balance;
@@ -174,6 +173,7 @@ contract COStake is AccessControl, Pausable {
         ss.balance = amount;
         ss.lockedUntil = 0;
         ss.since = uint64(block.timestamp);
+
         emit StakeUpdate(msg.sender, amount);
     }
 
@@ -181,8 +181,10 @@ contract COStake is AccessControl, Pausable {
         StakeState storage ss = _states[msg.sender];
         require(ss.balance > 0);
         updateAccumulatedYield(ss);
+
         ss.since = uint64(block.timestamp);
         ss.lockedUntil = uint64(block.timestamp + unlockPeriod);
+
         emit WithdrawRequest(msg.sender, ss.lockedUntil);
     }
 
@@ -199,6 +201,7 @@ contract COStake is AccessControl, Pausable {
         ss.since = 0;
 
         require(token.transfer(msg.sender, balance), "transfer unsuccessful");
+
         emit StakeUpdate(msg.sender, 0);
     }
 
@@ -213,18 +216,20 @@ contract COStake is AccessControl, Pausable {
         ss.balance = 0;
         ss.lockedUntil = 0;
         ss.since = 0;
+
         uint yield = ss.accumulatedYield;
         ss.accumulatedYield = 0;
 
         token.transferFrom(yieldBank, msg.sender, yield);
         require(token.transfer(msg.sender, balance), "transfer unsuccessful");
+
         emit StakeUpdate(msg.sender, 0);
     }
 
     function claimYield() external {
         StakeState storage ss = _states[msg.sender];
-
         updateAccumulatedYield(ss);
+
         ss.since = uint64(block.timestamp);
         uint amount = ss.accumulatedYield;
         ss.accumulatedYield = 0;
