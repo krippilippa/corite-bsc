@@ -186,7 +186,7 @@ contract COStake is AccessControl, Pausable {
         emit WithdrawRequest(msg.sender, ss.lockedUntil);
     }
 
-    function withdraw(address to) external {
+    function withdraw() external {
         StakeState storage ss = _states[msg.sender];
         require(ss.balance > 0, "must have tokens to withdraw");
         require(ss.lockedUntil != 0, "unlock not requested");
@@ -198,11 +198,11 @@ contract COStake is AccessControl, Pausable {
         ss.lockedUntil = 0;
         ss.since = 0;
 
-        require(token.transfer(to, balance), "transfer unsuccessful");
+        require(token.transfer(msg.sender, balance), "transfer unsuccessful");
         emit StakeUpdate(msg.sender, 0);
     }
 
-    function withdrawAndClaimYield(address to) external {
+    function withdrawAndClaimYield() external {
         StakeState storage ss = _states[msg.sender];
         require(ss.balance > 0, "must have tokens to withdraw");
         require(ss.lockedUntil != 0, "unlock not requested");
@@ -216,8 +216,8 @@ contract COStake is AccessControl, Pausable {
         uint yield = ss.accumulatedYield;
         ss.accumulatedYield = 0;
 
-        token.transferFrom(yieldBank, to, yield);
-        require(token.transfer(to, balance), "transfer unsuccessful");
+        token.transferFrom(yieldBank, msg.sender, yield);
+        require(token.transfer(msg.sender, balance), "transfer unsuccessful");
         emit StakeUpdate(msg.sender, 0);
     }
 
