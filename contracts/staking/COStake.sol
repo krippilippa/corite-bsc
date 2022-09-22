@@ -33,9 +33,10 @@ contract COStake is AccessControl, Pausable {
     constructor(
         IERC20 _token,
         uint _initialRate,
-        address _yieldBank
+        address _yieldBank,
+        address _default_admin
     ) {
-        _setupRole(DEFAULT_ADMIN_ROLE, _msgSender());
+        _setupRole(DEFAULT_ADMIN_ROLE, _default_admin);
         token = _token;
         yieldTimeline.push(YieldPoint(_initialRate, block.timestamp));
         yieldBank = _yieldBank;

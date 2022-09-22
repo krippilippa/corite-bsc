@@ -9,9 +9,10 @@ async function main() {
 
   const COStake = await hre.ethers.getContractFactory("COStake");
   const cOStake = await COStake.deploy(
-    "0x6ee5DA30876E1697cD4Fc217d2A8a44D5A53A77d",
-    3650,
-    "0xd4354fB989df7F2b1d034B9AF682A77bA3C19B48"
+    "0x936B6659Ad0C1b244Ba8Efe639092acae30dc8d6",
+    2433,
+    "0x0000000000000000000000000000000000000000",
+    "0x15f218814414fBE8255f085EE09EE6264437b51A"
   );
 
   await cOStake.deployed();
