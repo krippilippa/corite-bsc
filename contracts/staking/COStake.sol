@@ -10,7 +10,7 @@ contract COStake is AccessControl, Pausable {
     event StakeUpdate(address indexed from, uint64 balance);
     event WithdrawRequest(address indexed from, uint64 until);
 
-    IERC20 private token;
+    IERC20 private immutable token;
 
     struct StakeState {
         uint64 balance;
