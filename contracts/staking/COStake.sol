@@ -9,6 +9,7 @@ import "@openzeppelin/contracts/security/Pausable.sol";
 contract COStake is AccessControl, Pausable {
     event StakeUpdate(address indexed from, uint64 balance);
     event WithdrawRequest(address indexed from, uint64 until);
+    event ClaimYield(address indexed from, uint amount);
 
     IERC20 private immutable token;
 
@@ -152,8 +153,7 @@ contract COStake is AccessControl, Pausable {
     }
 
     function updateAccumulatedYield(StakeState storage ss) private {
-        uint _accumulatedYield = calculateAccumulatedYield(ss);
-        ss.accumulatedYield = _accumulatedYield;
+        ss.accumulatedYield = calculateAccumulatedYield(ss);
     }
 
     function stake(uint64 amount) external whenNotPaused {
@@ -234,5 +234,7 @@ contract COStake is AccessControl, Pausable {
         uint amount = ss.accumulatedYield;
         ss.accumulatedYield = 0;
         token.transferFrom(yieldBank, msg.sender, amount);
+
+        emit ClaimYield(msg.sender, amount);
     }
 }
