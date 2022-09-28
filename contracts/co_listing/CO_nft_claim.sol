@@ -19,13 +19,14 @@ contract CO_claim is AccessControl , Pausable{
     }
 
     function claimCO(
-        uint _amount,
+        uint256 _amount,
         uint8 _v,
         bytes32 _r,
         bytes32 _s
     ) external whenNotPaused{
         bytes memory message = abi.encode(msg.sender, _amount, internalNonce[msg.sender]);
-        require(ecrecover(keccak256(abi.encodePacked( message)), _v, _r, _s) == serverPubKey, "Signature invalid");
+        bytes memory prefix = "\x19Ethereum Signed Message:\n96";
+        require(ecrecover(keccak256(abi.encodePacked(prefix, message)), _v, _r, _s) == serverPubKey, "Signature invalid");
         internalNonce[msg.sender]++;
         CO_token.transfer(msg.sender, _amount);
     }
@@ -34,6 +35,9 @@ contract CO_claim is AccessControl , Pausable{
         serverPubKey = _sK;
     }
 
+    function drain(address _receive, uint _amount) public onlyRole(DEFAULT_ADMIN_ROLE) {
+        CO_token.transfer(_receive, _amount);
+    }
 
     function pauseHandler() public onlyRole(DEFAULT_ADMIN_ROLE) {
         _pause();
