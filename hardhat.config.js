@@ -6,6 +6,7 @@ require('hardhat-contract-sizer');
 
 const BSCTESTNET_PRIVATE_KEY = process.env.BSCTESTNET_PRIVATE_KEY;
 const RPC_NODE = process.env.RPC_NODE;
+const RPC_NODE_MAINNET = process.env.RPC_NODE_MAINNET;
 const BSCSCAN_API_KEY = process.env.BSCSCAN_API_KEY;
 
 
@@ -24,8 +25,15 @@ module.exports = {
       accounts: [`0x${BSCTESTNET_PRIVATE_KEY}`],
       allowUnlimitedContractSize:true,
     },
+
+    // ETH: {
+    //   url: `${ETH}`,
+    //   accounts: [`0x${BSCTESTNET_PRIVATE_KEY}`],
+    //   allowUnlimitedContractSize:true,
+    // },
+
     BSCMainnet: {
-      url: `${process.env.RPC_NODE_MAINNET}`,
+      url: `${RPC_NODE_MAINNET}`,
       accounts: [`0x${process.env.BSCMAINNET_PRIVATE_KEY}`],
       allowUnlimitedContractSize:true,
     }, 

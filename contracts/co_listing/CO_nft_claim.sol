@@ -5,7 +5,7 @@ import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/security/Pausable.sol";
 import "@openzeppelin/contracts/interfaces/IERC20.sol";
 
-contract CO_claim is AccessControl , Pausable{
+contract CO_claim is AccessControl, Pausable {
 
     IERC20 public CO_token;
     address private serverPubKey;

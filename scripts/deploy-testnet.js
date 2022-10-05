@@ -4,8 +4,8 @@ const mainAdmin = "0x417b53B4F50ef24A0DFf64F9eA0dcE2E76DDE8E0";
 
 async function setBaseERC1155() {
  // const Contract = await ethers.getContractFactory("Corite_ERC1155");
-  const Contract = await ethers.getContractFactory("CoriteHandler");
-  const contract = await Contract.deploy(CNR, mainAdmin);
+  const Contract = await ethers.getContractFactory("CO_claim");
+  const contract = await Contract.deploy("0x936B6659Ad0C1b244Ba8Efe639092acae30dc8d6", "0x98f9dA9111090B95A522169cd8666649A8D5c4A5", "0x15f218814414fBE8255f085EE09EE6264437b51A");
   await contract.deployed();
   return contract;
 }
