@@ -1,19 +1,19 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.4;
 
-import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import "../helpers/CoriteMNFT.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/security/Pausable.sol";
 
 contract OriginsNFTBurn is AccessControl, Pausable {
-    IERC721 immutable OriginsNFT;
+    CoriteMNFT immutable OriginsNFT;
     IERC20 COToken;
     address COAccount;
     address private serverPubKey;
 
     constructor(
-        IERC721 _OriginsNFT,
+        CoriteMNFT _OriginsNFT,
         IERC20 _COToken,
         address _COAccount,
         address _serverPubKey,
@@ -26,15 +26,16 @@ contract OriginsNFTBurn is AccessControl, Pausable {
         _setupRole(DEFAULT_ADMIN_ROLE, _default_admin_role);
     }
 
-    function burnAndClaim(
+    function burnAndClaimBacker(
         uint _tokenId,
-        uint8 _backer,
         uint8 _v,
         bytes32 _r,
         bytes32 _s
     ) public whenNotPaused {
-        bytes memory message = abi.encode(msg.sender, _backer);
-        bytes memory prefix = "\x19Ethereum Signed Message:\n96";
+        require(OriginsNFT.ownerOf(_tokenId) == msg.sender, "Not NFT Owner");
+        bytes memory message = abi.encode(msg.sender, 1);
+        bytes memory prefix = "\x19Ethereum Signed Message:\n64";
+
         require(
             ecrecover(
                 keccak256(abi.encodePacked(prefix, message)),
@@ -42,12 +43,21 @@ contract OriginsNFTBurn is AccessControl, Pausable {
                 _r,
                 _s
             ) == serverPubKey,
-            "Signature invalid"
+            "Invalid sign"
         );
+
+        uint32 prize = determinePrize(tokenIdToRandom(_tokenId)) * 10;
+
+        OriginsNFT.burn(_tokenId); // burn
+        if (prize > 0) COToken.transferFrom(COAccount, msg.sender, prize);
+    }
+
+    function burnAndClaimNonBacker(uint _tokenId) public whenNotPaused {
+        require(OriginsNFT.ownerOf(_tokenId) == msg.sender, "Not NFT Owner");
         uint32 prize = determinePrize(tokenIdToRandom(_tokenId));
 
-        OriginsNFT.transferFrom(msg.sender, address(0), _tokenId); // burn
-        COToken.transferFrom(COAccount, msg.sender, prize);
+        OriginsNFT.burn(_tokenId); // burn
+        if (prize > 0) COToken.transferFrom(COAccount, msg.sender, prize);
     }
 
     function determinePrize(uint32 num) internal pure returns (uint32) {
