@@ -21,10 +21,11 @@ describe("OriginsNFTBurn", function () {
 
     await testCO.connect(otherAccount).faucet();
 
-    const Test721 = await ethers.getContractFactory(
-      "contracts/helpers/CoriteMNFT.sol:CoriteMNFT"
+    const Test721 = await ethers.getContractFactory("CoriteMNFT");
+    const test721 = await Test721.deploy(
+      ethers.constants.AddressZero,
+      owner.address
     );
-    const test721 = await Test721.deploy(owner.address, 5);
 
     await test721.deployed();
 
@@ -39,6 +40,16 @@ describe("OriginsNFTBurn", function () {
 
     await originsNFTBurn.deployed();
 
+    await test721.grantRole(
+      ethers.utils.keccak256(ethers.utils.toUtf8Bytes("BURNER")),
+      originsNFTBurn.address
+    );
+    await test721.grantRole(
+      ethers.utils.keccak256(ethers.utils.toUtf8Bytes("MINTER")),
+      owner.address
+    );
+    await test721.mint(owner.address, 0);
+
     await testCO
       .connect(otherAccount)
       .increaseAllowance(originsNFTBurn.address, 10000000);
@@ -52,11 +63,12 @@ describe("OriginsNFTBurn", function () {
       const { originsNFTBurn, test721, testCO, owner, otherAccount } =
         await loadFixture(deployOriginsNFTBurn);
       let message = ethers.utils.defaultAbiCoder.encode(
-        ["address", "uint"],
-        [owner.address, 1]
+        ["address"],
+        [owner.address]
       );
 
       const { prefix, v, r, s } = await createSignature(message, owner);
+
       await expect(
         originsNFTBurn.burnAndClaimBacker(0, v, r, s)
       ).to.not.be.revertedWith("Invalid sign");
@@ -65,8 +77,8 @@ describe("OriginsNFTBurn", function () {
       const { originsNFTBurn, test721, testCO, owner, otherAccount } =
         await loadFixture(deployOriginsNFTBurn);
       let message = ethers.utils.defaultAbiCoder.encode(
-        ["address", "uint"],
-        [owner.address, 1]
+        ["address"],
+        [owner.address]
       );
 
       const { prefix, v, r, s } = await createSignature(message, otherAccount);
@@ -78,13 +90,13 @@ describe("OriginsNFTBurn", function () {
       const { originsNFTBurn, test721, testCO, owner, otherAccount } =
         await loadFixture(deployOriginsNFTBurn);
       let message = ethers.utils.defaultAbiCoder.encode(
-        ["address", "uint"],
-        [otherAccount.address, 1]
+        ["address"],
+        [otherAccount.address]
       );
 
       const { prefix, v, r, s } = await createSignature(message, owner);
       await expect(
-        originsNFTBurn.connect(otherAccount).burnAndClaimBacker(1, v, r, s)
+        originsNFTBurn.connect(otherAccount).burnAndClaimBacker(0, v, r, s)
       ).to.be.revertedWith("Not NFT Owner");
     });
   });
@@ -93,8 +105,8 @@ describe("OriginsNFTBurn", function () {
       const { originsNFTBurn, test721, testCO, owner, otherAccount } =
         await loadFixture(deployOriginsNFTBurn);
       let message = ethers.utils.defaultAbiCoder.encode(
-        ["address", "uint"],
-        [owner.address, 1]
+        ["address"],
+        [owner.address]
       );
 
       const { v, r, s } = await createSignature(message, owner);
@@ -122,8 +134,8 @@ describe("OriginsNFTBurn", function () {
       const { originsNFTBurn, test721, testCO, owner, otherAccount } =
         await loadFixture(deployOriginsNFTBurn);
       let message = ethers.utils.defaultAbiCoder.encode(
-        ["address", "uint"],
-        [owner.address, 1]
+        ["address"],
+        [owner.address]
       );
 
       const { v, r, s } = await createSignature(message, owner);
@@ -147,34 +159,6 @@ describe("OriginsNFTBurn", function () {
         deployOriginsNFTBurn
       );
       console.log(await originsNFTBurn.tokenIdToRandom(16202211399020));
-    });
-    it("How many out of 10000 get 500 CO?", async () => {
-      const { originsNFTBurn, owner, otherAccount } = await loadFixture(
-        deployOriginsNFTBurn
-      );
-      var count = 0;
-      for (let i = 0; i < 10000; i++) {
-        if (
-          (await originsNFTBurn.tokenIdToRandom(getRandomInt(1000000))) == 1
-        ) {
-          count++;
-        }
-      }
-      console.log(count);
-    });
-    it("How many out of 10000 get 1 CO?", async () => {
-      const { originsNFTBurn, owner, otherAccount } = await loadFixture(
-        deployOriginsNFTBurn
-      );
-      var count = 0;
-      for (let i = 0; i < 10000; i++) {
-        if (
-          (await originsNFTBurn.tokenIdToRandom(getRandomInt(1000000))) > 500
-        ) {
-          count++;
-        }
-      }
-      console.log(count);
     });
     it("Distribution 10000", async () => {
       const { originsNFTBurn, owner, otherAccount } = await loadFixture(

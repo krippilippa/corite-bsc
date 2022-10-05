@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.4;
 
-import "../helpers/CoriteMNFT.sol";
+import "../CoriteMNFT.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/security/Pausable.sol";
@@ -33,8 +33,8 @@ contract OriginsNFTBurn is AccessControl, Pausable {
         bytes32 _s
     ) public whenNotPaused {
         require(OriginsNFT.ownerOf(_tokenId) == msg.sender, "Not NFT Owner");
-        bytes memory message = abi.encode(msg.sender, 1);
-        bytes memory prefix = "\x19Ethereum Signed Message:\n64";
+        bytes memory message = abi.encode(msg.sender);
+        bytes memory prefix = "\x19Ethereum Signed Message:\n32";
 
         require(
             ecrecover(
@@ -61,7 +61,7 @@ contract OriginsNFTBurn is AccessControl, Pausable {
     }
 
     function determinePrize(uint32 num) internal pure returns (uint32) {
-        if (num == 1) {
+        if (num == 0) {
             return 500;
         } else if (num < 5) {
             return 100;
