@@ -27,12 +27,22 @@ contract OriginsNFTBurn is AccessControl, Pausable {
     }
 
     function burnAndClaimBacker(
-        uint _tokenId,
+        uint[] calldata _tokenIds,
         uint8 _v,
         bytes32 _r,
         bytes32 _s
     ) public whenNotPaused {
-        require(OriginsNFT.ownerOf(_tokenId) == msg.sender, "Not NFT Owner");
+        uint prize = 0;
+        for (uint i = 0; i < _tokenIds.length; i++) {
+            require(
+                OriginsNFT.ownerOf(_tokenIds[i]) == msg.sender,
+                "Not NFT Owner"
+            );
+
+            prize += determinePrize(tokenIdToNum(_tokenIds[i]));
+            OriginsNFT.burn(_tokenIds[i]); // burn
+        }
+
         bytes memory message = abi.encode(msg.sender);
         bytes memory prefix = "\x19Ethereum Signed Message:\n32";
 
@@ -46,17 +56,26 @@ contract OriginsNFTBurn is AccessControl, Pausable {
             "Invalid sign"
         );
 
-        uint32 prize = determinePrize(tokenIdToNum(_tokenId)) * 10;
+        prize *= 10;
 
-        OriginsNFT.burn(_tokenId); // burn
         if (prize > 0) COToken.transferFrom(COAccount, msg.sender, prize);
     }
 
-    function burnAndClaimNonBacker(uint _tokenId) public whenNotPaused {
-        require(OriginsNFT.ownerOf(_tokenId) == msg.sender, "Not NFT Owner");
-        uint32 prize = determinePrize(tokenIdToNum(_tokenId));
+    function burnAndClaimNonBacker(uint[] calldata _tokenIds)
+        public
+        whenNotPaused
+    {
+        uint prize = 0;
+        for (uint i = 0; i < _tokenIds.length; i++) {
+            require(
+                OriginsNFT.ownerOf(_tokenIds[i]) == msg.sender,
+                "Not NFT Owner"
+            );
 
-        OriginsNFT.burn(_tokenId); // burn
+            prize += determinePrize(tokenIdToNum(_tokenIds[i]));
+            OriginsNFT.burn(_tokenIds[i]); // burn
+        }
+
         if (prize > 0) COToken.transferFrom(COAccount, msg.sender, prize);
     }
 
@@ -79,7 +98,7 @@ contract OriginsNFTBurn is AccessControl, Pausable {
     }
 
     function tokenIdToNum(uint _tokenId) public pure returns (uint32) {
-        uint8 nonce = 1;
+        uint8 nonce = 55;
         uint32 random_num = uint32(
             bytes4(keccak256(abi.encodePacked(_tokenId, nonce)))
         ) % 1000;

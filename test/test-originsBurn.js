@@ -70,7 +70,7 @@ describe("OriginsNFTBurn", function () {
       const { prefix, v, r, s } = await createSignature(message, owner);
 
       await expect(
-        originsNFTBurn.burnAndClaimBacker(0, v, r, s)
+        originsNFTBurn.burnAndClaimBacker([0], v, r, s)
       ).to.not.be.revertedWith("Invalid sign");
     });
     it("Should not verify bad signer", async () => {
@@ -83,7 +83,7 @@ describe("OriginsNFTBurn", function () {
 
       const { prefix, v, r, s } = await createSignature(message, otherAccount);
       await expect(
-        originsNFTBurn.burnAndClaimBacker(0, v, r, s)
+        originsNFTBurn.burnAndClaimBacker([0], v, r, s)
       ).to.be.revertedWith("Invalid sign");
     });
     it("Should not let use someone elses token", async () => {
@@ -96,7 +96,7 @@ describe("OriginsNFTBurn", function () {
 
       const { prefix, v, r, s } = await createSignature(message, owner);
       await expect(
-        originsNFTBurn.connect(otherAccount).burnAndClaimBacker(0, v, r, s)
+        originsNFTBurn.connect(otherAccount).burnAndClaimBacker([0], v, r, s)
       ).to.be.revertedWith("Not NFT Owner");
     });
   });
@@ -113,7 +113,7 @@ describe("OriginsNFTBurn", function () {
       await expect(test721.ownerOf(0)).to.not.be.revertedWith(
         "ERC721: invalid token ID"
       );
-      await originsNFTBurn.burnAndClaimBacker(0, v, r, s);
+      await originsNFTBurn.burnAndClaimBacker([0], v, r, s);
       await expect(test721.ownerOf(0)).to.be.revertedWith(
         "ERC721: invalid token ID"
       );
@@ -124,7 +124,7 @@ describe("OriginsNFTBurn", function () {
       await expect(test721.ownerOf(0)).to.not.be.revertedWith(
         "ERC721: invalid token ID"
       );
-      await originsNFTBurn.burnAndClaimNonBacker(0);
+      await originsNFTBurn.burnAndClaimNonBacker([0]);
       await expect(test721.ownerOf(0)).to.be.revertedWith(
         "ERC721: invalid token ID"
       );
@@ -140,7 +140,7 @@ describe("OriginsNFTBurn", function () {
 
       const { v, r, s } = await createSignature(message, owner);
       var b0 = await testCO.balanceOf(owner.address);
-      await originsNFTBurn.burnAndClaimBacker(0, v, r, s);
+      await originsNFTBurn.burnAndClaimBacker([0], v, r, s);
       var b1 = await testCO.balanceOf(owner.address);
       console.log("Won " + (b1 - b0) + "!");
     });
@@ -148,7 +148,7 @@ describe("OriginsNFTBurn", function () {
       const { originsNFTBurn, test721, testCO, owner, otherAccount } =
         await loadFixture(deployOriginsNFTBurn);
       var b0 = await testCO.balanceOf(owner.address);
-      await originsNFTBurn.burnAndClaimNonBacker(0);
+      await originsNFTBurn.burnAndClaimNonBacker([0]);
       var b1 = await testCO.balanceOf(owner.address);
       console.log("Won " + (b1 - b0) + "!");
     });
