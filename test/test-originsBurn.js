@@ -158,7 +158,7 @@ describe("OriginsNFTBurn", function () {
       const { originsNFTBurn, owner, otherAccount } = await loadFixture(
         deployOriginsNFTBurn
       );
-      console.log(await originsNFTBurn.tokenIdToRandom(16202211399020));
+      console.log(await originsNFTBurn.tokenIdToNum(16202211399020));
     });
     it("Distribution 10000", async () => {
       const { originsNFTBurn, owner, otherAccount } = await loadFixture(
@@ -168,7 +168,7 @@ describe("OriginsNFTBurn", function () {
       var counts = [0, 0, 0, 0, 0, 0, 0];
 
       for (let i = 0; i < 10000; i++) {
-        var num = await originsNFTBurn.tokenIdToRandom(getRandomInt(1000000));
+        var num = await originsNFTBurn.tokenIdToNum(getRandomInt(1000000));
         if (num == 0) {
           counts[0]++;
         } else if (num < 5) {
@@ -195,7 +195,7 @@ describe("OriginsNFTBurn", function () {
       var counts = [0, 0, 0, 0, 0, 0, 0];
 
       for (let i = 0; i < 1000; i++) {
-        var num = await originsNFTBurn.tokenIdToRandom(getRandomInt(1000000));
+        var num = await originsNFTBurn.tokenIdToNum(getRandomInt(1000000));
         if (num == 0) {
           counts[0]++;
         } else if (num < 5) {

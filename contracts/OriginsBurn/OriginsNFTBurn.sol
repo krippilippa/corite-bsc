@@ -46,7 +46,7 @@ contract OriginsNFTBurn is AccessControl, Pausable {
             "Invalid sign"
         );
 
-        uint32 prize = determinePrize(tokenIdToRandom(_tokenId)) * 10;
+        uint32 prize = determinePrize(tokenIdToNum(_tokenId)) * 10;
 
         OriginsNFT.burn(_tokenId); // burn
         if (prize > 0) COToken.transferFrom(COAccount, msg.sender, prize);
@@ -54,7 +54,7 @@ contract OriginsNFTBurn is AccessControl, Pausable {
 
     function burnAndClaimNonBacker(uint _tokenId) public whenNotPaused {
         require(OriginsNFT.ownerOf(_tokenId) == msg.sender, "Not NFT Owner");
-        uint32 prize = determinePrize(tokenIdToRandom(_tokenId));
+        uint32 prize = determinePrize(tokenIdToNum(_tokenId));
 
         OriginsNFT.burn(_tokenId); // burn
         if (prize > 0) COToken.transferFrom(COAccount, msg.sender, prize);
@@ -78,9 +78,10 @@ contract OriginsNFTBurn is AccessControl, Pausable {
         }
     }
 
-    function tokenIdToRandom(uint _tokenId) public view returns (uint32) {
+    function tokenIdToNum(uint _tokenId) public pure returns (uint32) {
+        uint8 nonce = 1;
         uint32 random_num = uint32(
-            bytes4(keccak256(abi.encodePacked(_tokenId, block.timestamp)))
+            bytes4(keccak256(abi.encodePacked(_tokenId, nonce)))
         ) % 1000;
         return random_num;
     }
