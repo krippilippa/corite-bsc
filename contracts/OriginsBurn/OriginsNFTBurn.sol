@@ -8,7 +8,7 @@ import "@openzeppelin/contracts/security/Pausable.sol";
 
 contract OriginsNFTBurn is AccessControl, Pausable {
     CoriteMNFT immutable OriginsNFT;
-    IERC20 COToken;
+    IERC20 immutable COToken;
     address COAccount;
     address private serverPubKey;
 
