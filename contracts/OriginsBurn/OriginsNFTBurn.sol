@@ -9,19 +9,16 @@ import "@openzeppelin/contracts/security/Pausable.sol";
 contract OriginsNFTBurn is AccessControl, Pausable {
     CoriteMNFT immutable OriginsNFT;
     IERC20 immutable COToken;
-    address COAccount;
     address private serverPubKey;
 
     constructor(
         CoriteMNFT _OriginsNFT,
         IERC20 _COToken,
-        address _COAccount,
         address _serverPubKey,
         address _default_admin_role
     ) {
         OriginsNFT = _OriginsNFT;
         COToken = _COToken;
-        COAccount = _COAccount;
         serverPubKey = _serverPubKey;
         _setupRole(DEFAULT_ADMIN_ROLE, _default_admin_role);
     }
@@ -49,7 +46,7 @@ contract OriginsNFTBurn is AccessControl, Pausable {
 
         prize *= 10;
 
-        if (prize > 0) COToken.transferFrom(COAccount, msg.sender, prize);
+        if (prize > 0) COToken.transfer(msg.sender, prize);
     }
 
     function burnAndClaimNonBacker(uint[] calldata _tokenIds)
@@ -57,7 +54,7 @@ contract OriginsNFTBurn is AccessControl, Pausable {
         whenNotPaused
     {
         uint prize = burnAndClaim(_tokenIds);
-        if (prize > 0) COToken.transferFrom(COAccount, msg.sender, prize);
+        if (prize > 0) COToken.transfer(msg.sender, prize);
     }
 
     function burnAndClaim(uint[] calldata _tokenIds) internal returns (uint) {
@@ -109,11 +106,11 @@ contract OriginsNFTBurn is AccessControl, Pausable {
         serverPubKey = _sK;
     }
 
-    function changeCOAccount(address _COAccount)
+    function drain(address _to, uint _amount)
         public
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
-        COAccount = _COAccount;
+        COToken.transfer(_to, _amount);
     }
 
     function pauseHandler() public onlyRole(DEFAULT_ADMIN_ROLE) {
