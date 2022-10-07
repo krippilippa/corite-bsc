@@ -109,6 +109,13 @@ contract OriginsNFTBurn is AccessControl, Pausable {
         serverPubKey = _sK;
     }
 
+    function changeCOAccount(address _COAccount)
+        public
+        onlyRole(DEFAULT_ADMIN_ROLE)
+    {
+        COAccount = _COAccount;
+    }
+
     function pauseHandler() public onlyRole(DEFAULT_ADMIN_ROLE) {
         _pause();
     }
