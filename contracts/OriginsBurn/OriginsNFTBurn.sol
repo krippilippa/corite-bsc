@@ -98,7 +98,7 @@ contract OriginsNFTBurn is AccessControl, Pausable {
     }
 
     function tokenIdToNum(uint _tokenId) public pure returns (uint32) {
-        uint8 nonce = 55;
+        uint8 nonce = 0;
         uint32 random_num = uint32(
             bytes4(keccak256(abi.encodePacked(_tokenId, nonce)))
         ) % 1000;
