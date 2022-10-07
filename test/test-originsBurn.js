@@ -49,12 +49,12 @@ describe("OriginsNFTBurn", function () {
       ethers.utils.keccak256(ethers.utils.toUtf8Bytes("MINTER")),
       owner.address
     );
-    await test721.mint(owner.address, 0);
+    await test721.mint(owner.address, 1000000301);
 
     await testCO
       .connect(otherAccount)
       .increaseAllowance(originsNFTBurn.address, 10000000);
-    await test721.approve(originsNFTBurn.address, 0);
+    await test721.approve(originsNFTBurn.address, 1000000301);
 
     return { originsNFTBurn, test721, testCO, owner, otherAccount };
   }
@@ -84,7 +84,7 @@ describe("OriginsNFTBurn", function () {
 
       const { prefix, v, r, s } = await createSignature(message, otherAccount);
       await expect(
-        originsNFTBurn.burnAndClaimBacker([0], v, r, s)
+        originsNFTBurn.burnAndClaimBacker([1000000301], v, r, s)
       ).to.be.revertedWith("Invalid sign");
     });
     it("Should not let use someone elses token", async () => {
@@ -97,11 +97,81 @@ describe("OriginsNFTBurn", function () {
 
       const { prefix, v, r, s } = await createSignature(message, owner);
       await expect(
-        originsNFTBurn.connect(otherAccount).burnAndClaimBacker([0], v, r, s)
+        originsNFTBurn
+          .connect(otherAccount)
+          .burnAndClaimBacker([1000000301], v, r, s)
       ).to.be.revertedWith("Not NFT Owner");
     });
   });
   describe("Claiming", () => {
+    it("Should not let claim wrong token group", async () => {
+      const { originsNFTBurn, test721, testCO, owner, otherAccount } =
+        await loadFixture(deployOriginsNFTBurn);
+      let message = ethers.utils.defaultAbiCoder.encode(
+        ["address"],
+        [owner.address]
+      );
+
+      const { v, r, s } = await createSignature(message, owner);
+
+      await test721.mint(owner.address, 1030000301);
+
+      await test721.approve(originsNFTBurn.address, 1030000301);
+      await expect(
+        originsNFTBurn.burnAndClaimBacker([1030000301], v, r, s)
+      ).to.be.revertedWith("Wrong token group");
+
+      await test721.mint(owner.address, 10000000301);
+
+      await test721.approve(originsNFTBurn.address, 10000000301);
+      await expect(
+        originsNFTBurn.burnAndClaimBacker([10000000301], v, r, s)
+      ).to.be.revertedWith("Wrong token group");
+
+      await test721.mint(owner.address, 100000301);
+
+      await test721.approve(originsNFTBurn.address, 100000301);
+      await expect(
+        originsNFTBurn.burnAndClaimBacker([100000301], v, r, s)
+      ).to.be.revertedWith("Wrong token group");
+
+      await test721.mint(owner.address, 1);
+
+      await test721.approve(originsNFTBurn.address, 1);
+      await expect(
+        originsNFTBurn.burnAndClaimBacker([1], v, r, s)
+      ).to.be.revertedWith("Wrong token group");
+    });
+
+    it("Should allow correct token groups", async () => {
+      const { originsNFTBurn, test721, testCO, owner, otherAccount } =
+        await loadFixture(deployOriginsNFTBurn);
+      let message = ethers.utils.defaultAbiCoder.encode(
+        ["address"],
+        [owner.address]
+      );
+
+      const { v, r, s } = await createSignature(message, owner);
+
+      await expect(
+        originsNFTBurn.burnAndClaimBacker([1000000301], v, r, s)
+      ).to.not.be.revertedWith("Wrong token group");
+
+      await test721.mint(owner.address, 1001000301);
+
+      await test721.approve(originsNFTBurn.address, 1001000301);
+      await expect(
+        originsNFTBurn.burnAndClaimBacker([1001000301], v, r, s)
+      ).to.not.be.revertedWith("Wrong token group");
+
+      await test721.mint(owner.address, 1032000301);
+
+      await test721.approve(originsNFTBurn.address, 1032000301);
+      await expect(
+        originsNFTBurn.burnAndClaimBacker([1032000301], v, r, s)
+      ).to.not.be.revertedWith("Wrong token group");
+    });
+
     it("Should burn the NFT as backer", async () => {
       const { originsNFTBurn, test721, testCO, owner, otherAccount } =
         await loadFixture(deployOriginsNFTBurn);
@@ -111,22 +181,22 @@ describe("OriginsNFTBurn", function () {
       );
 
       const { v, r, s } = await createSignature(message, owner);
-      await expect(test721.ownerOf(0)).to.not.be.revertedWith(
+      await expect(test721.ownerOf(1000000301)).to.not.be.revertedWith(
         "ERC721: invalid token ID"
       );
-      await originsNFTBurn.burnAndClaimBacker([0], v, r, s);
-      await expect(test721.ownerOf(0)).to.be.revertedWith(
+      await originsNFTBurn.burnAndClaimBacker([1000000301], v, r, s);
+      await expect(test721.ownerOf(1000000301)).to.be.revertedWith(
         "ERC721: invalid token ID"
       );
     });
     it("Should burn the NFT as non-backer", async () => {
       const { originsNFTBurn, test721, testCO, owner, otherAccount } =
         await loadFixture(deployOriginsNFTBurn);
-      await expect(test721.ownerOf(0)).to.not.be.revertedWith(
+      await expect(test721.ownerOf(1000000301)).to.not.be.revertedWith(
         "ERC721: invalid token ID"
       );
-      await originsNFTBurn.burnAndClaimNonBacker([0]);
-      await expect(test721.ownerOf(0)).to.be.revertedWith(
+      await originsNFTBurn.burnAndClaimNonBacker([1000000301]);
+      await expect(test721.ownerOf(1000000301)).to.be.revertedWith(
         "ERC721: invalid token ID"
       );
     });
@@ -141,7 +211,7 @@ describe("OriginsNFTBurn", function () {
 
       const { v, r, s } = await createSignature(message, owner);
       var b0 = await testCO.balanceOf(owner.address);
-      await originsNFTBurn.burnAndClaimBacker([0], v, r, s);
+      await originsNFTBurn.burnAndClaimBacker([1000000301], v, r, s);
       var b1 = await testCO.balanceOf(owner.address);
       console.log("Won " + (b1 - b0) + "!");
     });
@@ -149,13 +219,13 @@ describe("OriginsNFTBurn", function () {
       const { originsNFTBurn, test721, testCO, owner, otherAccount } =
         await loadFixture(deployOriginsNFTBurn);
       var b0 = await testCO.balanceOf(owner.address);
-      await originsNFTBurn.burnAndClaimNonBacker([0]);
+      await originsNFTBurn.burnAndClaimNonBacker([1000000301]);
       var b1 = await testCO.balanceOf(owner.address);
       console.log("Won " + (b1 - b0) + "!");
     });
   });
   describe("Distributions", () => {
-    it("Should give a 'random' number", async () => {
+    xit("Should give a 'random' number", async () => {
       const { originsNFTBurn, owner, otherAccount } = await loadFixture(
         deployOriginsNFTBurn
       );
@@ -170,6 +240,13 @@ describe("OriginsNFTBurn", function () {
       var counts = [0, 0, 0, 0, 0, 0, 0];
 
       for (let i = 0; i < tokenIDs.length; i++) {
+        if (
+          !["1000", "1001", "1032"].includes(
+            tokenIDs[i].toString().substring(0, 4)
+          )
+        ) {
+          continue;
+        }
         var num = await originsNFTBurn.tokenIdToNum(tokenIDs[i]);
         if (num == 0) {
           counts[0]++;
@@ -190,7 +267,7 @@ describe("OriginsNFTBurn", function () {
       console.log("Counts: ", counts);
     });
 
-    it("Distribution random 10000", async () => {
+    xit("Distribution random 10000", async () => {
       const { originsNFTBurn, owner, otherAccount } = await loadFixture(
         deployOriginsNFTBurn
       );
@@ -217,7 +294,7 @@ describe("OriginsNFTBurn", function () {
       }
       console.log("Counts: ", counts);
     });
-    it("Distribution random 1000", async () => {
+    xit("Distribution random 1000", async () => {
       const { originsNFTBurn, owner, otherAccount } = await loadFixture(
         deployOriginsNFTBurn
       );

@@ -32,16 +32,7 @@ contract OriginsNFTBurn is AccessControl, Pausable {
         bytes32 _r,
         bytes32 _s
     ) public whenNotPaused {
-        uint prize = 0;
-        for (uint i = 0; i < _tokenIds.length; i++) {
-            require(
-                OriginsNFT.ownerOf(_tokenIds[i]) == msg.sender,
-                "Not NFT Owner"
-            );
-
-            prize += determinePrize(tokenIdToNum(_tokenIds[i]));
-            OriginsNFT.burn(_tokenIds[i]); // burn
-        }
+        uint prize = burnAndClaim((_tokenIds));
 
         bytes memory message = abi.encode(msg.sender);
         bytes memory prefix = "\x19Ethereum Signed Message:\n32";
@@ -65,18 +56,27 @@ contract OriginsNFTBurn is AccessControl, Pausable {
         public
         whenNotPaused
     {
+        uint prize = burnAndClaim(_tokenIds);
+        if (prize > 0) COToken.transferFrom(COAccount, msg.sender, prize);
+    }
+
+    function burnAndClaim(uint[] calldata _tokenIds) internal returns (uint) {
         uint prize = 0;
         for (uint i = 0; i < _tokenIds.length; i++) {
             require(
                 OriginsNFT.ownerOf(_tokenIds[i]) == msg.sender,
                 "Not NFT Owner"
             );
+            uint tokenGroup = _tokenIds[i] / 1000000;
+            require(
+                tokenGroup == 1000 || tokenGroup == 1001 || tokenGroup == 1032,
+                "Wrong token group"
+            );
 
             prize += determinePrize(tokenIdToNum(_tokenIds[i]));
             OriginsNFT.burn(_tokenIds[i]); // burn
         }
-
-        if (prize > 0) COToken.transferFrom(COAccount, msg.sender, prize);
+        return prize;
     }
 
     function determinePrize(uint32 num) internal pure returns (uint32) {
