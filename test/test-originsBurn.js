@@ -4,6 +4,7 @@ const {
 } = require("@nomicfoundation/hardhat-network-helpers");
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
+const tokenIDs = require("./COVariousTokenIds.json");
 
 describe("OriginsNFTBurn", function () {
   this.timeout(100000);
@@ -154,13 +155,42 @@ describe("OriginsNFTBurn", function () {
     });
   });
   describe("Distributions", () => {
-    it("Should give a random number", async () => {
+    it("Should give a 'random' number", async () => {
       const { originsNFTBurn, owner, otherAccount } = await loadFixture(
         deployOriginsNFTBurn
       );
       console.log(await originsNFTBurn.tokenIdToNum(16202211399020));
     });
-    it("Distribution 10000", async () => {
+
+    it("True distribution", async () => {
+      const { originsNFTBurn, owner, otherAccount } = await loadFixture(
+        deployOriginsNFTBurn
+      );
+
+      var counts = [0, 0, 0, 0, 0, 0, 0];
+
+      for (let i = 0; i < tokenIDs.length; i++) {
+        var num = await originsNFTBurn.tokenIdToNum(tokenIDs[i]);
+        if (num == 0) {
+          counts[0]++;
+        } else if (num < 5) {
+          counts[1]++;
+        } else if (num < 15) {
+          counts[2]++;
+        } else if (num < 65) {
+          counts[3]++;
+        } else if (num < 200) {
+          counts[4]++;
+        } else if (num < 700) {
+          counts[5]++;
+        } else {
+          counts[6]++;
+        }
+      }
+      console.log("Counts: ", counts);
+    });
+
+    it("Distribution random 10000", async () => {
       const { originsNFTBurn, owner, otherAccount } = await loadFixture(
         deployOriginsNFTBurn
       );
@@ -187,7 +217,7 @@ describe("OriginsNFTBurn", function () {
       }
       console.log("Counts: ", counts);
     });
-    it("Distribution 1000", async () => {
+    it("Distribution random 1000", async () => {
       const { originsNFTBurn, owner, otherAccount } = await loadFixture(
         deployOriginsNFTBurn
       );
