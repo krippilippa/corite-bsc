@@ -34,7 +34,6 @@ describe("OriginsNFTBurn", function () {
     const originsNFTBurn = await OriginsNFTBurn.deploy(
       test721.address,
       testCO.address,
-      otherAccount.address,
       owner.address,
       owner.address
     );
@@ -53,7 +52,7 @@ describe("OriginsNFTBurn", function () {
 
     await testCO
       .connect(otherAccount)
-      .increaseAllowance(originsNFTBurn.address, 10000000);
+      .transfer(originsNFTBurn.address, 1000000000);
     await test721.approve(originsNFTBurn.address, 1000000301);
 
     return { originsNFTBurn, test721, testCO, owner, otherAccount };
@@ -221,7 +220,7 @@ describe("OriginsNFTBurn", function () {
       var b0 = await testCO.balanceOf(owner.address);
       await originsNFTBurn.burnAndClaimNonBacker([1000000301]);
       var b1 = await testCO.balanceOf(owner.address);
-      console.log("Won " + (b1 - b0) + "!");
+      console.log("Won " + (b1 - b0) / 1000000 + "!");
     });
   });
   describe("Distributions", () => {

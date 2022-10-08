@@ -78,23 +78,23 @@ contract OriginsNFTBurn is AccessControl, Pausable {
 
     function determinePrize(uint32 num) internal pure returns (uint32) {
         if (num == 0) {
-            return 500;
+            return 500000000;
         } else if (num < 5) {
-            return 100;
+            return 100000000;
         } else if (num < 15) {
-            return 50;
+            return 50000000;
         } else if (num < 65) {
-            return 10;
+            return 10000000;
         } else if (num < 200) {
-            return 5;
+            return 5000000;
         } else if (num < 700) {
-            return 1;
+            return 1000000;
         } else {
             return 0;
         }
     }
 
-    function tokenIdToNum(uint _tokenId) public pure returns (uint32) {
+    function tokenIdToNum(uint _tokenId) internal pure returns (uint32) {
         uint8 nonce = 0;
         uint32 random_num = uint32(
             bytes4(keccak256(abi.encodePacked(_tokenId, nonce)))
