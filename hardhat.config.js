@@ -4,6 +4,7 @@ require("hardhat-gas-reporter");
 require("@nomiclabs/hardhat-etherscan");
 require("hardhat-contract-sizer");
 require("@openzeppelin/hardhat-upgrades");
+require("solidity-coverage");
 
 const BSCTESTNET_PRIVATE_KEY = process.env.BSCTESTNET_PRIVATE_KEY;
 const RPC_NODE = process.env.RPC_NODE;

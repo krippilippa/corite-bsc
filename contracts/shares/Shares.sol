@@ -47,7 +47,8 @@ contract Shares is Initializable, ERC721Upgradeable, WhitelistEnabledFor {
         address token,
         uint totalAmount,
         uint[] shareIds,
-        uint periodIndex
+        uint periodIndex,
+        uint maxShareEarnings
     );
     event Flush(address token, uint periodIndex);
     event ForceBackShares(uint[] shareIds);
@@ -57,8 +58,11 @@ contract Shares is Initializable, ERC721Upgradeable, WhitelistEnabledFor {
         string newName,
         string newSymbol
     );
-    event ChangeBaseURI(string oldBase, string newBase);
-    event CalculateTokenDistribution(address token, uint newShareEarnings);
+    event CalculateTokenDistribution(
+        address token,
+        uint periodIndex,
+        uint newShareEarnings
+    );
     event ChangeWhitelist(address old, address _new);
 
     function initialize(
@@ -66,7 +70,15 @@ contract Shares is Initializable, ERC721Upgradeable, WhitelistEnabledFor {
         string memory _symbol,
         address _CNR,
         address _default_admin
-    ) public initializer {
+    )
+        public
+        // uint _periodLength,
+        // uint _flushDelay,
+        // bool _adminForceBackDisabled,
+        // bool _transferWhiteListRequired,
+        // bool _claimWhiteListRequired
+        initializer
+    {
         __AccessControl_init();
         _setupRole(DEFAULT_ADMIN_ROLE, _default_admin);
         _setupRole(ADMIN, _default_admin);
@@ -77,6 +89,11 @@ contract Shares is Initializable, ERC721Upgradeable, WhitelistEnabledFor {
         whitelistAddress = this;
         periodLength = 365 days;
         flushDelay = 90 days;
+        // periodLength = _periodLength;
+        // flushDelay = _flushDelay;
+        // adminForceBackDisabled = _adminForceBackDisabled;
+        // transferWhiteListRequired = _transferWhiteListRequired;
+        // claimWhiteListRequired = _claimWhiteListRequired;
     }
 
     receive() external payable {}
@@ -119,7 +136,7 @@ contract Shares is Initializable, ERC721Upgradeable, WhitelistEnabledFor {
         ClaimPeriod storage activePeriod = claimPeriods[activePeriodIndex];
 
         if (block.timestamp < activePeriod.start + periodLength) {
-            _distribution(activePeriod, _token);
+            _distribution(activePeriod, activePeriodIndex, _token);
         } else {
             claimPeriods.push();
             ClaimPeriod storage nextPeriod = claimPeriods[
@@ -132,12 +149,13 @@ contract Shares is Initializable, ERC721Upgradeable, WhitelistEnabledFor {
                 (block.timestamp - activePeriod.start) /
                 periodLength;
             retroactiveTotals[_token] += activePeriod.earningsAccountedFor;
-            _distribution(nextPeriod, _token);
+            _distribution(nextPeriod, activePeriodIndex + 1, _token);
         }
     }
 
     function _distribution(
         ClaimPeriod storage _period,
+        uint _periodIndex,
         address _token
     ) internal {
         if (_token == address(0)) {
@@ -155,7 +173,11 @@ contract Shares is Initializable, ERC721Upgradeable, WhitelistEnabledFor {
                 _period.startCap;
             _period.earningsAccountedFor = balance;
         }
-        emit CalculateTokenDistribution(_token, _period.shareEarnings);
+        emit CalculateTokenDistribution(
+            _token,
+            _periodIndex,
+            _period.shareEarnings
+        );
     }
 
     function mint(address _to, uint _quantity) public onlyRole(MINT) {
@@ -205,7 +227,8 @@ contract Shares is Initializable, ERC721Upgradeable, WhitelistEnabledFor {
             _token,
             totalToGet,
             _shareIds,
-            _claimPeriod
+            _claimPeriod,
+            token[_token][_claimPeriod].shareEarnings
         );
     }
 
@@ -227,7 +250,8 @@ contract Shares is Initializable, ERC721Upgradeable, WhitelistEnabledFor {
             address(0),
             totalToGet,
             _shareIds,
-            _claimPeriod
+            _claimPeriod,
+            token[address(0)][_claimPeriod].shareEarnings
         );
     }
 
@@ -247,7 +271,7 @@ contract Shares is Initializable, ERC721Upgradeable, WhitelistEnabledFor {
         require(
             period.earningsAccountedFor != 0,
             "Nothing to claim or flushed"
-        ); // CHECK FLUSHED?
+        );
         uint target = period.shareEarnings;
 
         uint startMaxTokenId = period.startMaxTokenId + 1;
@@ -262,7 +286,7 @@ contract Shares is Initializable, ERC721Upgradeable, WhitelistEnabledFor {
         if (_periodIndex < token[_token].length - 1) {
             retroactiveTotals[_token] -= totalToGet;
         }
-        period.earningsAccountedFor -= totalToGet; // TEST IF FAIL ON FLUSHED
+        period.earningsAccountedFor -= totalToGet;
     }
 
     function flush(
@@ -277,17 +301,18 @@ contract Shares is Initializable, ERC721Upgradeable, WhitelistEnabledFor {
     function _flush(uint _periodIndex, address _token) internal {
         ClaimPeriod storage period = token[_token][_periodIndex];
         require(
-            period.start > block.timestamp + periodLength + flushDelay,
+            block.timestamp > period.start + periodLength + flushDelay,
             "Not Possible to flush this deposit period yet."
         );
+        if (_periodIndex > 0) {
+            retroactiveTotals[_token] -= period.earningsAccountedFor;
+        }
         if (_token == address(0)) {
-            retroactiveTotals[address(0)] -= period.earningsAccountedFor;
             uint toSend = period.earningsAccountedFor; // prevent reentrancy
             period.earningsAccountedFor = 0;
             (bool sent, ) = msg.sender.call{value: toSend}("");
             require(sent, "Failed to transfer native token");
         } else {
-            retroactiveTotals[_token] -= period.earningsAccountedFor;
             IERC20(_token).transfer(msg.sender, period.earningsAccountedFor);
             period.earningsAccountedFor = 0;
         }
@@ -327,6 +352,12 @@ contract Shares is Initializable, ERC721Upgradeable, WhitelistEnabledFor {
         symbol_ = _symbol;
     }
 
+    function setWhitelistAddress(
+        Whitelist _wlAddress
+    ) external onlyRole(ADMIN) {
+        whitelistAddress = _wlAddress;
+    }
+
     function getBalance() public view returns (uint) {
         return address(this).balance;
     }
@@ -339,7 +370,6 @@ contract Shares is Initializable, ERC721Upgradeable, WhitelistEnabledFor {
         return symbol_;
     }
 
-    //Also add view function for flush check
     function getLeftToClaim(
         address _token,
         uint _claimPeriod,
@@ -353,6 +383,18 @@ contract Shares is Initializable, ERC721Upgradeable, WhitelistEnabledFor {
                 token[_token][_claimPeriod].claimedPerShare[_shareIds[i]];
         }
         return arr;
+    }
+
+    function getFlushableAmount(
+        address _token,
+        uint _claimPeriod
+    ) external view returns (uint256 amount) {
+        ClaimPeriod storage period = token[_token][_claimPeriod];
+        require(
+            block.timestamp > period.start + periodLength + flushDelay,
+            "Not Possible to flush this deposit period yet."
+        );
+        return period.earningsAccountedFor;
     }
 
     function _beforeTokenTransfer(
