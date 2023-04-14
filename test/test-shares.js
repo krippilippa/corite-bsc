@@ -21,194 +21,205 @@ async function setSharesHandler() {
     return sharesHandler;
 }
 
-// describe("Test shares", function () {
-//     beforeEach(async function () {
-//         [owner, buyer, taxAcc, server] = await ethers.getSigners();
-//         CNR = await help.setCNR();
-//         shares = await setShares(CNR);
-//         sharesHandler = await setSharesHandler(shares);
-//         SERVER = await sharesHandler.SERVER();
-//         ADMIN = await sharesHandler.ADMIN();
-//         MINT = await shares.MINT();
-//         await shares.grantRole(MINT, sharesHandler.address);
-//         await sharesHandler.grantRole(SERVER, server.address);
-//         testCO = await help.setTestCO();
-//         await testCO.connect(buyer).approve(sharesHandler.address, 1000000000);
-//         await testCO.connect(owner).approve(shares.address, 100000000000);
-//         await shares.connect(owner).issuanceOfShares(100);
-//     });
+describe("Test sharesHandler", function () {
+    beforeEach(async function () {
+        [owner, buyer, taxAcc, server] = await ethers.getSigners();
+        CNR = await help.setCNR();
+        shares = await setShares(CNR);
+        sharesHandler = await setSharesHandler(shares);
+        SERVER = await sharesHandler.SERVER();
+        ADMIN = await sharesHandler.ADMIN();
+        MINT = await shares.MINT();
+        await shares.grantRole(MINT, sharesHandler.address);
+        await sharesHandler.grantRole(SERVER, server.address);
+        testCO = await help.setTestCO();
+        await testCO.connect(buyer).approve(sharesHandler.address, 1000000000);
+        await testCO.connect(owner).approve(shares.address, 100000000000);
+        await shares.connect(owner).issuanceOfShares(100);
+    });
 
-//     it("should mint shares for users as an admin", async function () {
-//         await sharesHandler.connect(owner).mintForUser(shares.address, [buyer.address], 5);
-//         const buyerBalance = await shares.balanceOf(buyer.address);
-//         expect(buyerBalance.toNumber()).to.equal(5);
-//     });
+    it("should mint shares for users as an admin", async function () {
+        await expect(sharesHandler.connect(owner).mintForUser(shares.address, [buyer.address], 5))
+            .to.emit(sharesHandler, "Mint")
+            .withArgs(shares.address, buyer.address, 5);
+        const buyerBalance = await shares.balanceOf(buyer.address);
+        expect(buyerBalance.toNumber()).to.equal(5);
+    });
 
-//     it("should not mint shares for users as a non-admin", async function () {
-//         await expect(sharesHandler.connect(buyer).mintForUser(shares.address, [buyer.address], 5)).to.be.revertedWith(
-//             "AccessControl: account 0x70997970c51812dc3a010c7d01b50e0d17dc79c8 is missing role 0xdf8b4c520ffe197c5343c6f5aec59570151ef9a492f2c624fd45ddde6135ec42"
-//         );
-//     });
+    it("should not mint shares for users as a non-admin", async function () {
+        await expect(sharesHandler.connect(buyer).mintForUser(shares.address, [buyer.address], 5)).to.be.revertedWith(
+            "AccessControl: account 0x70997970c51812dc3a010c7d01b50e0d17dc79c8 is missing role 0xdf8b4c520ffe197c5343c6f5aec59570151ef9a492f2c624fd45ddde6135ec42"
+        );
+    });
 
-//     it("should buy shares with ERC20 token", async function () {
-//         const tokenAmount = 200000000;
-//         const tokenAddress = testCO.address;
+    it("should buy shares with ERC20 token", async function () {
+        const tokenAmount = 200000000;
+        const tokenAddress = testCO.address;
 
-//         let obj = ethers.utils.defaultAbiCoder.encode(
-//             ["address", "address", "uint", "address", "uint", "uint", "address"],
-//             [
-//                 buyer.address,
-//                 shares.address,
-//                 5,
-//                 tokenAddress,
-//                 tokenAmount,
-//                 await sharesHandler.internalNonce(buyer.address),
-//                 sharesHandler.address,
-//             ]
-//         );
-//         const { prefix, v, r, s } = await createSignature(obj);
-//         await sharesHandler.connect(buyer).mintUserPay(shares.address, 5, tokenAddress, tokenAmount, prefix, v, r, s);
-//     });
+        let obj = ethers.utils.defaultAbiCoder.encode(
+            ["address", "address", "uint", "address", "uint", "uint", "address"],
+            [
+                buyer.address,
+                shares.address,
+                5,
+                tokenAddress,
+                tokenAmount,
+                await sharesHandler.internalNonce(buyer.address),
+                sharesHandler.address,
+            ]
+        );
+        const { prefix, v, r, s } = await createSignature(obj);
+        await expect(
+            sharesHandler.connect(buyer).mintUserPay(shares.address, 5, tokenAddress, tokenAmount, prefix, v, r, s)
+        )
+            .to.emit(sharesHandler, "Mint")
+            .withArgs(shares.address, buyer.address, 5);
+    });
 
-//     it("should buy shares with native token", async function () {
-//         const tokenAmount = ethers.utils.parseEther("0.2");
-//         const tokenAddress = ethers.constants.AddressZero;
+    it("should buy shares with native token", async function () {
+        const tokenAmount = ethers.utils.parseEther("0.2");
+        const tokenAddress = ethers.constants.AddressZero;
 
-//         let obj = ethers.utils.defaultAbiCoder.encode(
-//             ["address", "address", "uint", "address", "uint", "uint", "address"],
-//             [
-//                 buyer.address,
-//                 shares.address,
-//                 5,
-//                 tokenAddress,
-//                 tokenAmount,
-//                 await sharesHandler.internalNonce(buyer.address),
-//                 sharesHandler.address,
-//             ]
-//         );
-//         const { prefix, v, r, s } = await createSignature(obj);
-//         await sharesHandler
-//             .connect(buyer)
-//             .mintUserPay(shares.address, 5, tokenAddress, tokenAmount, prefix, v, r, s, { value: tokenAmount });
+        let obj = ethers.utils.defaultAbiCoder.encode(
+            ["address", "address", "uint", "address", "uint", "uint", "address"],
+            [
+                buyer.address,
+                shares.address,
+                5,
+                tokenAddress,
+                tokenAmount,
+                await sharesHandler.internalNonce(buyer.address),
+                sharesHandler.address,
+            ]
+        );
+        const { prefix, v, r, s } = await createSignature(obj);
+        await sharesHandler
+            .connect(buyer)
+            .mintUserPay(shares.address, 5, tokenAddress, tokenAmount, prefix, v, r, s, { value: tokenAmount });
 
-//         const buyerBalance = await shares.balanceOf(buyer.address);
-//         expect(buyerBalance.toNumber()).to.equal(5);
-//     });
+        const buyerBalance = await shares.balanceOf(buyer.address);
+        expect(buyerBalance.toNumber()).to.equal(5);
+    });
 
-//     it("should pause and unpause SharesHandler", async function () {
-//         await sharesHandler.connect(owner).pauseHandler();
-//         expect(await sharesHandler.paused()).to.be.true;
+    it("should pause and unpause SharesHandler", async function () {
+        await sharesHandler.connect(owner).pauseHandler();
+        expect(await sharesHandler.paused()).to.be.true;
 
-//         await sharesHandler.connect(owner).unpauseHandler();
-//         expect(await sharesHandler.paused()).to.be.false;
-//     });
+        await sharesHandler.connect(owner).unpauseHandler();
+        expect(await sharesHandler.paused()).to.be.false;
+    });
 
-//     it("should mint shares for multiple users", async function () {
-//         const users = [buyer.address, taxAcc.address];
-//         const amount = 7;
+    it("should mint shares for multiple users", async function () {
+        const users = [buyer.address, taxAcc.address];
+        const amount = 7;
 
-//         await sharesHandler.connect(owner).mintForUser(shares.address, users, amount);
+        await sharesHandler.connect(owner).mintForUser(shares.address, users, amount);
 
-//         const buyerBalance = await shares.balanceOf(buyer.address);
-//         const taxAccBalance = await shares.balanceOf(taxAcc.address);
+        const buyerBalance = await shares.balanceOf(buyer.address);
+        const taxAccBalance = await shares.balanceOf(taxAcc.address);
 
-//         expect(buyerBalance.toNumber()).to.equal(amount);
-//         expect(taxAccBalance.toNumber()).to.equal(amount);
-//     });
+        expect(buyerBalance.toNumber()).to.equal(amount);
+        expect(taxAccBalance.toNumber()).to.equal(amount);
+    });
 
-//     it("should fail to buy shares with incorrect token amount", async function () {
-//         const tokenAmount = 200000000;
-//         const incorrectTokenAmount = 150000000;
-//         const tokenAddress = testCO.address;
+    it("should fail to buy shares with incorrect token amount", async function () {
+        const tokenAmount = 200000000;
+        const incorrectTokenAmount = 150000000;
+        const tokenAddress = testCO.address;
 
-//         let obj = ethers.utils.defaultAbiCoder.encode(
-//             ["address", "address", "uint", "address", "uint", "uint", "address"],
-//             [
-//                 buyer.address,
-//                 shares.address,
-//                 5,
-//                 tokenAddress,
-//                 tokenAmount,
-//                 await sharesHandler.internalNonce(buyer.address),
-//                 sharesHandler.address,
-//             ]
-//         );
-//         const { prefix, v, r, s } = await createSignature(obj);
+        let obj = ethers.utils.defaultAbiCoder.encode(
+            ["address", "address", "uint", "address", "uint", "uint", "address"],
+            [
+                buyer.address,
+                shares.address,
+                5,
+                tokenAddress,
+                tokenAmount,
+                await sharesHandler.internalNonce(buyer.address),
+                sharesHandler.address,
+            ]
+        );
+        const { prefix, v, r, s } = await createSignature(obj);
 
-//         await expect(
-//             sharesHandler
-//                 .connect(buyer)
-//                 .mintUserPay(shares.address, 5, tokenAddress, incorrectTokenAmount, prefix, v, r, s)
-//         ).to.be.revertedWith("Invalid server signature");
-//     });
+        await expect(
+            sharesHandler
+                .connect(buyer)
+                .mintUserPay(shares.address, 5, tokenAddress, incorrectTokenAmount, prefix, v, r, s)
+        ).to.be.revertedWith("Invalid server signature");
+    });
 
-//     it("should fail to buy shares with same server signature", async function () {
-//         const tokenAmount = 200000000;
-//         const tokenAddress = testCO.address;
+    it("should fail to buy shares with same server signature", async function () {
+        const tokenAmount = 200000000;
+        const tokenAddress = testCO.address;
 
-//         let obj = ethers.utils.defaultAbiCoder.encode(
-//             ["address", "address", "uint", "address", "uint", "uint", "address"],
-//             [
-//                 buyer.address,
-//                 shares.address,
-//                 5,
-//                 tokenAddress,
-//                 tokenAmount,
-//                 await sharesHandler.internalNonce(buyer.address),
-//                 sharesHandler.address,
-//             ]
-//         );
-//         const { prefix, v, r, s } = await createSignature(obj);
+        let obj = ethers.utils.defaultAbiCoder.encode(
+            ["address", "address", "uint", "address", "uint", "uint", "address"],
+            [
+                buyer.address,
+                shares.address,
+                5,
+                tokenAddress,
+                tokenAmount,
+                await sharesHandler.internalNonce(buyer.address),
+                sharesHandler.address,
+            ]
+        );
+        const { prefix, v, r, s } = await createSignature(obj);
 
-//         await sharesHandler.connect(buyer).mintUserPay(shares.address, 5, tokenAddress, tokenAmount, prefix, v, r, s);
+        await sharesHandler.connect(buyer).mintUserPay(shares.address, 5, tokenAddress, tokenAmount, prefix, v, r, s);
 
-//         await expect(
-//             sharesHandler.connect(buyer).mintUserPay(shares.address, 5, tokenAddress, tokenAmount, prefix, v, r, s)
-//         ).to.be.revertedWith("Invalid server signature");
-//     });
+        await expect(
+            sharesHandler.connect(buyer).mintUserPay(shares.address, 5, tokenAddress, tokenAmount, prefix, v, r, s)
+        ).to.be.revertedWith("Invalid server signature");
+    });
 
-//     it("should fail when trying to claim earnings with invalid indices", async function () {
-//         await sharesHandler.mintForUser(shares.address, [buyer.address], 5);
+    it("should fail when trying to claim earnings with invalid indices", async function () {
+        await sharesHandler.mintForUser(shares.address, [buyer.address], 5);
 
-//         await testCO.transfer(shares.address, 1000000000);
-//         await shares.calculateTokenDistribution(testCO.address);
+        await testCO.transfer(shares.address, 1000000000);
+        await shares.calculateTokenDistribution(testCO.address);
 
-//         await expect(
-//             shares.connect(buyer).claimEarnings(testCO.address, 0, buyer.address, [0, 3, 5])
-//         ).to.be.revertedWith("ERC721: invalid token ID");
-//     });
+        await expect(
+            shares.connect(buyer).claimEarnings(testCO.address, 0, buyer.address, [0, 3, 5])
+        ).to.be.revertedWith("ERC721: invalid token ID");
+    });
 
-//     it("should fail to mint shares when not called by SharesHandler", async function () {
-//         await expect(shares.connect(owner).mint(buyer.address, 5)).to.be.revertedWith(
-//             "AccessControl: account 0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266 is missing role 0xfdf81848136595c31bb5f76217767372bc4bf906663038eb38381131ea27ecba"
-//         );
-//     });
+    it("should fail to mint shares when not called by SharesHandler", async function () {
+        await expect(shares.connect(owner).mint(buyer.address, 5)).to.be.revertedWith(
+            "AccessControl: account 0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266 is missing role 0xfdf81848136595c31bb5f76217767372bc4bf906663038eb38381131ea27ecba"
+        );
+    });
 
-//     it("should fail to issue shares when not called by ADMIN", async function () {
-//         await expect(shares.connect(buyer).issuanceOfShares(100)).to.be.revertedWith(
-//             "AccessControl: account 0x70997970c51812dc3a010c7d01b50e0d17dc79c8 is missing role 0xdf8b4c520ffe197c5343c6f5aec59570151ef9a492f2c624fd45ddde6135ec42"
-//         );
-//     });
+    it("should fail to issue shares when not called by ADMIN", async function () {
+        await expect(shares.connect(buyer).issuanceOfShares(100)).to.be.revertedWith(
+            "AccessControl: account 0x70997970c51812dc3a010c7d01b50e0d17dc79c8 is missing role 0xdf8b4c520ffe197c5343c6f5aec59570151ef9a492f2c624fd45ddde6135ec42"
+        );
+    });
 
-//     it("should fail to change the tax account in SharesHandler by non-ADMIN", async function () {
-//         const newTaxAcc = ethers.Wallet.createRandom();
-//         await expect(sharesHandler.connect(buyer).setCoriteAccount(newTaxAcc.address)).to.be.revertedWith(
-//             "AccessControl: account 0x70997970c51812dc3a010c7d01b50e0d17dc79c8 is missing role 0xdf8b4c520ffe197c5343c6f5aec59570151ef9a492f2c624fd45ddde6135ec42"
-//         );
-//     });
+    it("should fail to change the tax account in SharesHandler by non-ADMIN", async function () {
+        const newTaxAcc = ethers.Wallet.createRandom();
+        await expect(sharesHandler.connect(buyer).setCoriteAccount(newTaxAcc.address)).to.be.revertedWith(
+            "AccessControl: account 0x70997970c51812dc3a010c7d01b50e0d17dc79c8 is missing role 0xdf8b4c520ffe197c5343c6f5aec59570151ef9a492f2c624fd45ddde6135ec42"
+        );
+    });
 
-//     it("should read leftToClaim", async function () {
-//         await sharesHandler.mintForUser(shares.address, [buyer.address], 5);
+    it("should change coriteAccount", async function () {
+        await expect(sharesHandler.connect(buyer).setCoriteAccount(buyer.address)).to.be.reverted;
+        await sharesHandler.setCoriteAccount(owner.address);
+    });
 
-//         await testCO.transfer(shares.address, 1000000000);
-//         await shares.calculateTokenDistribution(testCO.address);
+    it("should read leftToClaim", async function () {
+        await sharesHandler.mintForUser(shares.address, [buyer.address], 5);
 
-//         await shares.connect(buyer).claimEarnings(testCO.address, 0, buyer.address, [1, 3, 5]);
-//         let left = await shares.getLeftToClaim(testCO.address, 0, [1, 2, 3, 4, 5]);
-//         left = left.map((n) => n.toNumber());
-//         expect(left).to.eql([0, 10000000, 0, 10000000, 0]);
-//     });
-// });
+        await testCO.transfer(shares.address, 1000000000);
+        await shares.calculateTokenDistribution(testCO.address);
+
+        await shares.connect(buyer).claimEarnings(testCO.address, 0, buyer.address, [1, 3, 5]);
+        let left = await shares.getLeftToClaim(testCO.address, 0, [1, 2, 3, 4, 5]);
+        left = left.map((n) => n.toNumber());
+        expect(left).to.eql([0, 10000000, 0, 10000000, 0]);
+    });
+});
 
 describe("Test claim periods", function () {
     beforeEach(async function () {
@@ -390,6 +401,20 @@ describe("Test claimEarnings", function () {
         let retroActiveTotals = await shares.retroactiveTotals(zeroAddress);
         expect(retroActiveTotals).to.be.equal(ethers.utils.parseEther("0.95"));
     });
+
+    it("should require whitelist for claim", async function () {
+        let COAmount = 100000000;
+        await testCO.transfer(shares.address, COAmount);
+        await shares.calculateTokenDistribution(testCO.address);
+        await expect(shares.connect(buyer).setClaimWL(true)).to.be.reverted;
+        await shares.setClaimWL(true);
+        await expect(
+            shares.connect(buyer).claimEarnings(testCO.address, 0, buyer.address, [1, 2, 3, 4, 5])
+        ).to.be.revertedWith("Address not whitelisted");
+        await expect(shares.connect(buyer).addToWhitelist([buyer.address])).to.be.reverted;
+        await shares.addToWhitelist([buyer.address]);
+        await shares.connect(buyer).claimEarnings(testCO.address, 0, buyer.address, [1, 2, 3, 4, 5]);
+    });
 });
 
 describe("Test calculateTokenDistribution", function () {
@@ -458,6 +483,35 @@ describe("Test flush", function () {
         );
     });
 
+    it("should fail if period is not flushable native", async () => {
+        let amount = ethers.utils.parseEther("1");
+        await owner.sendTransaction({
+            to: shares.address,
+            value: amount,
+        });
+        await shares.calculateTokenDistribution(zeroAddress);
+        await expect(shares.flush(0, [zeroAddress])).to.be.revertedWith(
+            "Not Possible to flush this deposit period yet."
+        );
+    });
+
+    it("should get flushable amount", async () => {
+        let COAmount = 100000000;
+        await testCO.transfer(shares.address, COAmount);
+        await shares.calculateTokenDistribution(testCO.address);
+
+        await shares.connect(buyer).claimEarnings(testCO.address, 0, buyer.address, [1, 2, 3, 4, 5]);
+
+        let claimedAmount = 5000000;
+
+        await ethers.provider.send("evm_increaseTime", [71]);
+        await ethers.provider.send("evm_mine");
+
+        let flushableAmount = await shares.getFlushableAmount(testCO.address, 0);
+
+        expect(flushableAmount).to.equal(COAmount - claimedAmount);
+    });
+
     it("should flush a period successfully", async () => {
         const initialBalance = (await testCO.balanceOf(owner.address)).toNumber();
         let COAmount = 100000000;
@@ -467,12 +521,9 @@ describe("Test flush", function () {
         await shares.connect(buyer).claimEarnings(testCO.address, 0, buyer.address, [1, 2, 3, 4, 5]);
 
         let claimedAmount = 5000000;
-        // Wait for the period to be flushable
+
         await ethers.provider.send("evm_increaseTime", [71]);
         await ethers.provider.send("evm_mine");
-
-        // await testCO.connect(owner).transfer(shares.address, 100000000);
-        // await shares.calculateTokenDistribution(testCO.address);
 
         await shares.flush(0, [testCO.address]);
         await expect(
@@ -482,6 +533,53 @@ describe("Test flush", function () {
         const finalBalance = (await testCO.balanceOf(owner.address)).toNumber();
 
         expect(finalBalance).to.equal(initialBalance - claimedAmount);
+    });
+
+    it("should flush a second period successfully", async () => {
+        const initialBalance = (await testCO.balanceOf(owner.address)).toNumber();
+        let COAmount = 100000000;
+        await testCO.transfer(shares.address, COAmount);
+        await shares.calculateTokenDistribution(testCO.address);
+
+        await ethers.provider.send("evm_increaseTime", [71]);
+        await ethers.provider.send("evm_mine");
+        await testCO.transfer(shares.address, COAmount);
+        await shares.calculateTokenDistribution(testCO.address);
+
+        await shares.connect(buyer).claimEarnings(testCO.address, 1, buyer.address, [1, 2, 3, 4, 5]);
+
+        let claimedAmount = 5000000;
+
+        await ethers.provider.send("evm_increaseTime", [71]);
+        await ethers.provider.send("evm_mine");
+
+        await shares.flush(1, [testCO.address]);
+        await expect(
+            shares.connect(buyer).claimEarnings(testCO.address, 1, buyer.address, [6, 7, 8, 9, 10])
+        ).to.be.revertedWith("Nothing to claim or flushed");
+
+        const finalBalance = (await testCO.balanceOf(owner.address)).toNumber();
+
+        expect(finalBalance).to.equal(initialBalance - COAmount - claimedAmount);
+    });
+
+    it("should flush native successfully", async () => {
+        let amount = ethers.utils.parseEther("1");
+        await owner.sendTransaction({
+            to: shares.address,
+            value: amount,
+        });
+        await shares.calculateTokenDistribution(zeroAddress);
+
+        await shares.connect(buyer).claimEarningsNative(0, buyer.address, [1, 2, 3, 4, 5]);
+
+        await ethers.provider.send("evm_increaseTime", [71]);
+        await ethers.provider.send("evm_mine");
+
+        await shares.flush(0, [zeroAddress]);
+        await expect(shares.connect(buyer).claimEarningsNative(0, buyer.address, [6, 7, 8, 9, 10])).to.be.revertedWith(
+            "Nothing to claim or flushed"
+        );
     });
 
     it("should emit Flush event", async () => {
@@ -529,6 +627,7 @@ describe("Test token limitations", function () {
     });
 
     it("should fail on transferBlocked", async function () {
+        await expect(shares.connect(buyer).setTransferBlocked(true)).to.be.reverted;
         await shares.setTransferBlocked(true);
         await expect(shares.connect(buyer).transferFrom(buyer.address, taxAcc.address, 1)).to.be.revertedWith(
             "Transfers are currently blocked"
@@ -539,6 +638,7 @@ describe("Test token limitations", function () {
     });
 
     it("should fail on WL required", async function () {
+        await expect(shares.connect(buyer).setTransferWL(true)).to.be.reverted;
         await shares.setTransferWL(true);
         await expect(shares.connect(buyer).transferFrom(buyer.address, taxAcc.address, 1)).to.be.revertedWith(
             "Invalid token transfer"
@@ -549,17 +649,90 @@ describe("Test token limitations", function () {
         );
         await shares.addToWhitelist([taxAcc.address]);
         await shares.connect(buyer).transferFrom(buyer.address, taxAcc.address, 1);
+        await expect(shares.connect(buyer).removeFromWhitelist([buyer.address])).to.be.reverted;
+        await shares.removeFromWhitelist([buyer.address]);
+        await expect(shares.connect(buyer).transferFrom(buyer.address, taxAcc.address, 2)).to.be.revertedWith(
+            "Invalid token transfer"
+        );
         await shares.setTransferWL(false);
-        await shares.connect(taxAcc).transferFrom(taxAcc.address, owner.address, 1);
-        expect(await shares.ownerOf(1)).to.be.equal(owner.address);
+        await shares.connect(buyer).transferFrom(buyer.address, taxAcc.address, 2);
+        expect(await shares.ownerOf(2)).to.be.equal(taxAcc.address);
     });
 
     it("should burn when burning enabled", async function () {
         await expect(shares.connect(buyer).burnBatch([1, 2, 3, 4, 5])).to.be.revertedWith("Burning shares is disabled");
+        await expect(shares.connect(buyer).setBurnEnabled(true)).to.be.reverted;
         await shares.setBurnEnabled(true);
         await expect(shares.connect(owner).burnBatch([1, 2, 3, 4, 5])).to.be.revertedWith("Invalid token owner");
         await shares.connect(buyer).burnBatch([1, 2, 3, 4, 5]);
         await expect(shares.ownerOf(5)).to.be.revertedWith("ERC721: invalid token ID");
+    });
+});
+
+describe("Test adminForceBackShares", function () {
+    beforeEach(async function () {
+        [owner, buyer, taxAcc, server] = await ethers.getSigners();
+        CNR = await help.setCNR();
+        shares = await setShares(CNR);
+        MINT = await shares.MINT();
+        await shares.grantRole(MINT, owner.address);
+        testCO = await help.setTestCO();
+        await testCO.connect(owner).approve(shares.address, 100000000000);
+        await shares.issuanceOfShares(10);
+        await shares.mint(buyer.address, 10);
+    });
+
+    it("should take back shares", async function () {
+        expect(await shares.balanceOf(buyer.address)).to.be.equal(10);
+        await shares.adminForceBackShares([1, 2, 3, 4, 5], owner.address);
+        expect(await shares.balanceOf(buyer.address)).to.be.equal(5);
+        expect(await shares.balanceOf(owner.address)).to.be.equal(5);
+    });
+
+    it("should disable forceBack", async function () {
+        await expect(shares.connect(buyer).disableAdminForceBack()).to.be.reverted;
+        await shares.disableAdminForceBack();
+        await expect(shares.adminForceBackShares([1, 2, 3, 4, 5], owner.address)).to.be.revertedWith(
+            "Force back has been disabled"
+        );
+    });
+});
+
+describe("Test misc", function () {
+    beforeEach(async function () {
+        [owner, buyer, taxAcc, server] = await ethers.getSigners();
+        CNR = await help.setCNR();
+        shares = await setShares(CNR);
+        testCO = await help.setTestCO();
+    });
+
+    it("should return name and symbol", async function () {
+        expect(await shares.name()).to.be.equal("tokenName");
+        expect(await shares.symbol()).to.be.equal("tokenSymbol");
+    });
+
+    it("should change name and symbol", async function () {
+        await expect(shares.connect(buyer).setNameAndSymbol("newName", "newSymbol")).to.be.reverted;
+        await expect(shares.setNameAndSymbol("newName", "newSymbol"))
+            .to.emit(shares, "ChangeNameAndSymbol")
+            .withArgs("tokenName", "tokenSymbol", "newName", "newSymbol");
+        expect(await shares.name()).to.be.equal("newName");
+        expect(await shares.symbol()).to.be.equal("newSymbol");
+    });
+
+    it("should return balance", async function () {
+        let amount = ethers.utils.parseEther("1");
+        await owner.sendTransaction({
+            to: shares.address,
+            value: amount,
+        });
+        expect(await shares.getBalance()).to.be.equal(amount);
+    });
+
+    it("should change whitelistAddress", async function () {
+        await expect(shares.connect(buyer).setWhitelistAddress(buyer.address)).to.be.reverted;
+        await shares.setWhitelistAddress(owner.address);
+        expect(await shares.whitelistAddress()).to.be.equal(owner.address);
     });
 });
 async function createSignature(obj) {

@@ -13,6 +13,8 @@ contract SharesHandler is AccessControl, Pausable {
     address private coriteAccount;
     mapping(address => uint) public internalNonce;
 
+    event Mint(address sharesContract, address user, uint amount);
+
     constructor(address _coriteAccount, address _default_admin_role) {
         coriteAccount = _coriteAccount;
         _setupRole(DEFAULT_ADMIN_ROLE, _default_admin_role);
@@ -73,6 +75,7 @@ contract SharesHandler is AccessControl, Pausable {
         uint _amount
     ) internal {
         IShares(_sharesContract).mint(_to, _amount);
+        emit Mint(_sharesContract, _to, _amount);
     }
 
     function setCoriteAccount(address _account) external onlyRole(ADMIN) {

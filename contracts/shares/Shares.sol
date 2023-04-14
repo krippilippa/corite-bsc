@@ -52,7 +52,7 @@ contract Shares is Initializable, ERC721Upgradeable, WhitelistEnabledFor {
     );
     event Flush(address token, uint periodIndex);
     event ForceBackShares(uint[] shareIds);
-    event ChangeNameAndTicker(
+    event ChangeNameAndSymbol(
         string oldName,
         string oldSymbol,
         string newName,
@@ -66,8 +66,8 @@ contract Shares is Initializable, ERC721Upgradeable, WhitelistEnabledFor {
     event ChangeWhitelist(address old, address _new);
 
     function initialize(
-        string memory _name,
-        string memory _symbol,
+        string memory _collectionName,
+        string memory _collectionSymbol,
         address _CNR,
         address _default_admin
     )
@@ -82,9 +82,9 @@ contract Shares is Initializable, ERC721Upgradeable, WhitelistEnabledFor {
         __AccessControl_init();
         _setupRole(DEFAULT_ADMIN_ROLE, _default_admin);
         _setupRole(ADMIN, _default_admin);
-        __ERC721_init(_name, _symbol);
-        name_ = _name;
-        symbol_ = _symbol;
+        __ERC721_init(_collectionName, _collectionSymbol);
+        name_ = _collectionName;
+        symbol_ = _collectionSymbol;
         CNR = _CNR;
         whitelistAddress = this;
         periodLength = 365 days;
@@ -344,12 +344,12 @@ contract Shares is Initializable, ERC721Upgradeable, WhitelistEnabledFor {
     }
 
     function setNameAndSymbol(
-        string memory _name,
-        string memory _symbol
+        string memory _newName,
+        string memory _newSymbol
     ) external onlyRole(ADMIN) {
-        emit ChangeNameAndTicker(name_, symbol_, _name, _symbol);
-        name_ = _name;
-        symbol_ = _symbol;
+        emit ChangeNameAndSymbol(name_, symbol_, _newName, _newSymbol);
+        name_ = _newName;
+        symbol_ = _newSymbol;
     }
 
     function setWhitelistAddress(
