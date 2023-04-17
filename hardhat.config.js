@@ -16,7 +16,7 @@ const BSCSCAN_API_KEY = process.env.BSCSCAN_API_KEY;
  */
 module.exports = {
     solidity: {
-        version: "0.8.4",
+        version: "0.8.19",
         settings: {
             optimizer: {
                 enabled: true,

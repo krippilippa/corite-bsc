@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.4;
+pragma solidity 0.8.19;
 
 import "@openzeppelin/contracts/interfaces/IERC20.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC721/ERC721Upgradeable.sol";
@@ -21,12 +21,12 @@ contract Shares is Initializable, ERC721Upgradeable, WhitelistEnabledFor {
     uint public circulatingSupply;
     uint public burnCount;
 
-    bool public adminForceBackDisabled;
-    bool public burnEnabled;
-
     uint public firstPeriodStart;
     uint public periodLength;
     uint public flushDelay;
+
+    bool public adminForceBackDisabled;
+    bool public burnEnabled;
 
     mapping(address => uint) public retroactiveTotals;
     mapping(address => ClaimPeriod[]) public token;
@@ -70,15 +70,7 @@ contract Shares is Initializable, ERC721Upgradeable, WhitelistEnabledFor {
         string memory _collectionSymbol,
         address _CNR,
         address _default_admin
-    )
-        public
-        // uint _periodLength,
-        // uint _flushDelay,
-        // bool _adminForceBackDisabled,
-        // bool _transferWhiteListRequired,
-        // bool _claimWhiteListRequired
-        initializer
-    {
+    ) public initializer {
         __AccessControl_init();
         _setupRole(DEFAULT_ADMIN_ROLE, _default_admin);
         _setupRole(ADMIN, _default_admin);
@@ -89,11 +81,6 @@ contract Shares is Initializable, ERC721Upgradeable, WhitelistEnabledFor {
         whitelistAddress = this;
         periodLength = 365 days;
         flushDelay = 90 days;
-        // periodLength = _periodLength;
-        // flushDelay = _flushDelay;
-        // adminForceBackDisabled = _adminForceBackDisabled;
-        // transferWhiteListRequired = _transferWhiteListRequired;
-        // claimWhiteListRequired = _claimWhiteListRequired;
     }
 
     receive() external payable {}
