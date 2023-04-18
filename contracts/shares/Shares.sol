@@ -29,11 +29,11 @@ contract Shares is Initializable, ERC721Upgradeable, WhitelistEnabledFor {
     bool public burnEnabled;
 
     mapping(address => uint) public retroactiveTotals;
-    mapping(address => ClaimPeriod[]) public token;
+    mapping(address => ClaimPeriod[]) public tokenPeriods;
 
     struct ClaimPeriod {
         uint start;
-        uint startCap;
+        uint startCap; 
         uint startMaxTokenId;
         uint shareEarnings;
         uint earningsAccountedFor;
@@ -111,7 +111,7 @@ contract Shares is Initializable, ERC721Upgradeable, WhitelistEnabledFor {
 
     function calculateTokenDistribution(address _token) public {
         require(supplyCap != 0, "Must issue shares");
-        ClaimPeriod[] storage claimPeriods = token[_token];
+        ClaimPeriod[] storage claimPeriods = tokenPeriods[_token];
         if (claimPeriods.length == 0) {
             claimPeriods.push();
             claimPeriods[0].start = firstPeriodStart;
@@ -215,7 +215,7 @@ contract Shares is Initializable, ERC721Upgradeable, WhitelistEnabledFor {
             totalToGet,
             _shareIds,
             _claimPeriod,
-            token[_token][_claimPeriod].shareEarnings
+            tokenPeriods[_token][_claimPeriod].shareEarnings
         );
     }
 
@@ -238,7 +238,7 @@ contract Shares is Initializable, ERC721Upgradeable, WhitelistEnabledFor {
             totalToGet,
             _shareIds,
             _claimPeriod,
-            token[address(0)][_claimPeriod].shareEarnings
+            tokenPeriods[address(0)][_claimPeriod].shareEarnings
         );
     }
 
@@ -248,7 +248,7 @@ contract Shares is Initializable, ERC721Upgradeable, WhitelistEnabledFor {
         address _owner,
         uint[] calldata _shareIds
     ) internal returns (uint totalToGet) {
-        ClaimPeriod storage period = token[_token][_periodIndex];
+        ClaimPeriod storage period = tokenPeriods[_token][_periodIndex];
         if (claimWhiteListRequired) {
             require(
                 whitelistAddress.whitelist(_owner),
@@ -270,7 +270,7 @@ contract Shares is Initializable, ERC721Upgradeable, WhitelistEnabledFor {
                 period.claimedPerShare[share] = target;
             }
         }
-        if (_periodIndex < token[_token].length - 1) {
+        if (_periodIndex < tokenPeriods[_token].length - 1) {
             retroactiveTotals[_token] -= totalToGet;
         }
         period.earningsAccountedFor -= totalToGet;
@@ -286,7 +286,7 @@ contract Shares is Initializable, ERC721Upgradeable, WhitelistEnabledFor {
     }
 
     function _flush(uint _periodIndex, address _token) internal {
-        ClaimPeriod storage period = token[_token][_periodIndex];
+        ClaimPeriod storage period = tokenPeriods[_token][_periodIndex];
         require(
             block.timestamp > period.start + periodLength + flushDelay,
             "Not Possible to flush this deposit period yet."
@@ -363,11 +363,11 @@ contract Shares is Initializable, ERC721Upgradeable, WhitelistEnabledFor {
         uint[] calldata _shareIds
     ) external view returns (uint256[] memory) {
         uint256[] memory arr = new uint256[](_shareIds.length);
-        uint maxClaim = token[_token][_claimPeriod].shareEarnings;
+        uint maxClaim = tokenPeriods[_token][_claimPeriod].shareEarnings;
         for (uint i = 0; i < _shareIds.length; i++) {
             arr[i] =
                 maxClaim -
-                token[_token][_claimPeriod].claimedPerShare[_shareIds[i]];
+                tokenPeriods[_token][_claimPeriod].claimedPerShare[_shareIds[i]];
         }
         return arr;
     }
@@ -376,7 +376,7 @@ contract Shares is Initializable, ERC721Upgradeable, WhitelistEnabledFor {
         address _token,
         uint _claimPeriod
     ) external view returns (uint256 amount) {
-        ClaimPeriod storage period = token[_token][_claimPeriod];
+        ClaimPeriod storage period = tokenPeriods[_token][_claimPeriod];
         require(
             block.timestamp > period.start + periodLength + flushDelay,
             "Not Possible to flush this deposit period yet."
