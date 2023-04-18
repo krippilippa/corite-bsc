@@ -33,7 +33,7 @@ contract Shares is Initializable, ERC721Upgradeable, WhitelistEnabledFor {
 
     struct ClaimPeriod {
         uint start;
-        uint startCap; 
+        uint startCap;
         uint startMaxTokenId;
         uint shareEarnings;
         uint earningsAccountedFor;
@@ -291,7 +291,7 @@ contract Shares is Initializable, ERC721Upgradeable, WhitelistEnabledFor {
             block.timestamp > period.start + periodLength + flushDelay,
             "Not Possible to flush this deposit period yet."
         );
-        if (_periodIndex > 0) {
+        if (_periodIndex < tokenPeriods[_token].length - 1) {
             retroactiveTotals[_token] -= period.earningsAccountedFor;
         }
         if (_token == address(0)) {
@@ -367,7 +367,9 @@ contract Shares is Initializable, ERC721Upgradeable, WhitelistEnabledFor {
         for (uint i = 0; i < _shareIds.length; i++) {
             arr[i] =
                 maxClaim -
-                tokenPeriods[_token][_claimPeriod].claimedPerShare[_shareIds[i]];
+                tokenPeriods[_token][_claimPeriod].claimedPerShare[
+                    _shareIds[i]
+                ];
         }
         return arr;
     }
