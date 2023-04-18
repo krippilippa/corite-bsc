@@ -236,7 +236,7 @@ describe("Test claim periods", function () {
         let COAmount = 100000000;
         await testCO.transfer(shares.address, COAmount);
         await shares.calculateTokenDistribution(testCO.address);
-        let earnings = (await shares.token(testCO.address, 0)).earningsAccountedFor.toNumber();
+        let earnings = (await shares.tokenPeriods(testCO.address, 0)).earningsAccountedFor.toNumber();
 
         expect(earnings).to.be.equal(COAmount);
     });
@@ -248,7 +248,7 @@ describe("Test claim periods", function () {
             value: amount,
         });
         await shares.calculateTokenDistribution(zeroAddress);
-        let earnings = (await shares.token(zeroAddress, 0)).earningsAccountedFor;
+        let earnings = (await shares.tokenPeriods(zeroAddress, 0)).earningsAccountedFor;
         expect(earnings).to.be.equal(amount);
     });
 
@@ -258,8 +258,8 @@ describe("Test claim periods", function () {
         let COAmount = 100000000;
         await testCO.transfer(shares.address, COAmount);
         await shares.calculateTokenDistribution(testCO.address);
-        let earnings = (await shares.token(testCO.address, 1)).earningsAccountedFor.toNumber();
-        let earnings0 = (await shares.token(testCO.address, 0)).earningsAccountedFor.toNumber();
+        let earnings = (await shares.tokenPeriods(testCO.address, 1)).earningsAccountedFor.toNumber();
+        let earnings0 = (await shares.tokenPeriods(testCO.address, 0)).earningsAccountedFor.toNumber();
 
         expect(earnings).to.be.equal(COAmount);
         expect(earnings0).to.be.equal(0);
@@ -274,8 +274,8 @@ describe("Test claim periods", function () {
             value: amount,
         });
         await shares.calculateTokenDistribution(zeroAddress);
-        let earnings = (await shares.token(zeroAddress, 1)).earningsAccountedFor;
-        let earnings0 = (await shares.token(zeroAddress, 0)).earningsAccountedFor;
+        let earnings = (await shares.tokenPeriods(zeroAddress, 1)).earningsAccountedFor;
+        let earnings0 = (await shares.tokenPeriods(zeroAddress, 0)).earningsAccountedFor;
 
         expect(earnings).to.be.equal(amount);
         expect(earnings0).to.be.equal(0);
@@ -293,7 +293,7 @@ describe("Test claim periods", function () {
         await ethers.provider.send("evm_mine");
         await testCO.transfer(shares.address, COAmount);
         await shares.calculateTokenDistribution(testCO.address);
-        let earnings = (await shares.token(testCO.address, 2)).earningsAccountedFor.toNumber();
+        let earnings = (await shares.tokenPeriods(testCO.address, 2)).earningsAccountedFor.toNumber();
         let retroActiveTotals = (await shares.retroactiveTotals(testCO.address)).toNumber();
 
         expect(earnings).to.be.equal(COAmount);
@@ -321,7 +321,7 @@ describe("Test claim periods", function () {
             value: amount,
         });
         await shares.calculateTokenDistribution(zeroAddress);
-        let earnings = (await shares.token(zeroAddress, 2)).earningsAccountedFor;
+        let earnings = (await shares.tokenPeriods(zeroAddress, 2)).earningsAccountedFor;
         let retroActiveTotals = await shares.retroactiveTotals(zeroAddress);
 
         expect(earnings).to.be.equal(amount);
@@ -349,9 +349,10 @@ describe("Test claimEarnings", function () {
         await testCO.transfer(shares.address, COAmount);
         await shares.calculateTokenDistribution(testCO.address);
         await shares.connect(buyer).claimEarnings(testCO.address, 0, buyer.address, [1, 2, 3, 4, 5]);
+        await shares.connect(buyer).claimEarnings(testCO.address, 0, buyer.address, [1, 2, 3, 4, 5]);
         let newBalance = (await testCO.balanceOf(buyer.address)).toNumber();
         expect(newBalance).to.be.equal(initialBalance + 5000000);
-        let earningsLeft = (await shares.token(testCO.address, 0)).earningsAccountedFor.toNumber();
+        let earningsLeft = (await shares.tokenPeriods(testCO.address, 0)).earningsAccountedFor.toNumber();
         expect(earningsLeft).to.be.equal(COAmount - 5000000);
     });
 
@@ -363,7 +364,7 @@ describe("Test claimEarnings", function () {
         });
         await shares.calculateTokenDistribution(zeroAddress);
         await shares.connect(buyer).claimEarningsNative(0, buyer.address, [1, 2, 3, 4, 5]);
-        let earningsLeft = (await shares.token(zeroAddress, 0)).earningsAccountedFor;
+        let earningsLeft = (await shares.tokenPeriods(zeroAddress, 0)).earningsAccountedFor;
         expect(earningsLeft).to.be.equal(ethers.utils.parseEther("0.95"));
     });
 
@@ -455,8 +456,8 @@ describe("Test calculateTokenDistribution", function () {
         let expectedShareEarnings = 1000000000 / 100;
         await shares.calculateTokensDistribution([testCO.address, testCO2.address]);
 
-        let shareClaims1 = (await shares.token(testCO.address, 0)).shareEarnings.toNumber();
-        let shareClaims2 = (await shares.token(testCO2.address, 0)).shareEarnings.toNumber();
+        let shareClaims1 = (await shares.tokenPeriods(testCO.address, 0)).shareEarnings.toNumber();
+        let shareClaims2 = (await shares.tokenPeriods(testCO2.address, 0)).shareEarnings.toNumber();
         expect(shareClaims1).to.eql(expectedShareEarnings);
         expect(shareClaims2).to.eql(expectedShareEarnings);
     });
