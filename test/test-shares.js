@@ -252,6 +252,17 @@ describe("Test claim periods", function () {
         expect(earnings).to.be.equal(amount);
     });
 
+    it("should successfully create a second period", async function () {
+        let firstPeriodStart = await shares.firstPeriodStart();
+        await ethers.provider.send("evm_increaseTime", [90]);
+        await ethers.provider.send("evm_mine");
+        let COAmount = 100000000;
+        await testCO.transfer(shares.address, COAmount);
+        await shares.calculateTokenDistribution(testCO.address);
+        let secondPeriodStart = (await shares.tokenPeriods(testCO.address, 1)).start;
+        expect(secondPeriodStart - firstPeriodStart).to.be.equal(60);
+    });
+
     it("should add earnings to second period", async function () {
         await ethers.provider.send("evm_increaseTime", [61]);
         await ethers.provider.send("evm_mine");
@@ -483,9 +494,7 @@ describe("Test flush", function () {
     it("should fail if period is not flushable", async () => {
         await testCO.transfer(shares.address, 100000000);
         await shares.calculateTokenDistribution(testCO.address);
-        await expect(shares.flush(0, [testCO.address])).to.be.revertedWith(
-            "Not Possible to flush this deposit period yet."
-        );
+        await expect(shares.flush(0, [testCO.address])).to.be.revertedWith("Not Possible to flush this period yet");
     });
 
     it("should fail if period is not flushable native", async () => {
@@ -495,9 +504,7 @@ describe("Test flush", function () {
             value: amount,
         });
         await shares.calculateTokenDistribution(zeroAddress);
-        await expect(shares.flush(0, [zeroAddress])).to.be.revertedWith(
-            "Not Possible to flush this deposit period yet."
-        );
+        await expect(shares.flush(0, [zeroAddress])).to.be.revertedWith("Not Possible to flush this period yet");
     });
 
     it("should get flushable amount", async () => {

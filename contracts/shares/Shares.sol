@@ -88,9 +88,9 @@ contract Shares is Initializable, ERC721Upgradeable, WhitelistEnabledFor {
     function issuanceOfShares(uint _nrToIssue) public onlyRole(ADMIN) {
         require(
             supplyCap == circulatingSupply,
-            "You can not issue more shares before minting existing ones"
+            "Can not issue more shares before minting existing ones"
         );
-        require(_nrToIssue > 0, "Can not issue 0");
+        require(_nrToIssue > 0, "Can not issue zero shares");
 
         if (supplyCap == 0) {
             firstPeriodStart = block.timestamp;
@@ -290,7 +290,7 @@ contract Shares is Initializable, ERC721Upgradeable, WhitelistEnabledFor {
         ClaimPeriod storage period = tokenPeriods[_token][_periodIndex];
         require(
             block.timestamp > period.start + periodLength + flushDelay,
-            "Not Possible to flush this deposit period yet."
+            "Not Possible to flush this period yet"
         );
         if (_periodIndex < tokenPeriods[_token].length - 1) {
             retroactiveTotals[_token] -= period.earningsAccountedFor;
@@ -382,7 +382,7 @@ contract Shares is Initializable, ERC721Upgradeable, WhitelistEnabledFor {
         ClaimPeriod storage period = tokenPeriods[_token][_claimPeriod];
         require(
             block.timestamp > period.start + periodLength + flushDelay,
-            "Not Possible to flush this deposit period yet."
+            "Not Possible to flush this period yet"
         );
         return period.earningsAccountedFor;
     }
