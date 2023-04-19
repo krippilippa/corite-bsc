@@ -13,7 +13,11 @@ contract SharesHandler is AccessControl, Pausable {
     address private coriteAccount;
     mapping(address => uint) public internalNonce;
 
-    event Mint(address sharesContract, address user, uint amount);
+    event Mint(
+        address indexed sharesContract,
+        address indexed user,
+        uint amount
+    );
 
     constructor(address _coriteAccount, address _default_admin_role) {
         coriteAccount = _coriteAccount;

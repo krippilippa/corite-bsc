@@ -43,14 +43,14 @@ contract Shares is Initializable, ERC721Upgradeable, WhitelistEnabledFor {
     event IssuanceOfShares(uint sharesInCirculation, uint oldCap, uint newCap);
     event IssuerMintOfShares(uint IDfrom, uint IDto);
     event EarningsClaimed(
-        address user,
-        address token,
+        address indexed user,
+        address indexed token,
         uint totalAmount,
         uint[] shareIds,
         uint periodIndex,
         uint maxShareEarnings
     );
-    event Flush(address token, uint periodIndex);
+    event Flush(address indexed token, uint periodIndex);
     event ForceBackShares(uint[] shareIds);
     event ChangeNameAndSymbol(
         string oldName,
@@ -59,11 +59,11 @@ contract Shares is Initializable, ERC721Upgradeable, WhitelistEnabledFor {
         string newSymbol
     );
     event CalculateTokenDistribution(
-        address token,
-        uint periodIndex,
+        address indexed token,
+        uint indexed periodIndex,
         uint newShareEarnings
     );
-    event ChangeWhitelist(address old, address _new);
+    event ChangeWhitelist(Whitelist old, Whitelist _new);
 
     function initialize(
         string memory _collectionName,
@@ -341,6 +341,7 @@ contract Shares is Initializable, ERC721Upgradeable, WhitelistEnabledFor {
     function setWhitelistAddress(
         Whitelist _wlAddress
     ) external onlyRole(ADMIN) {
+        emit ChangeWhitelist(whitelistAddress, _wlAddress);
         whitelistAddress = _wlAddress;
     }
 
