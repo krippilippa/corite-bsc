@@ -336,7 +336,9 @@ describe("Test claimEarnings", function () {
         shares = await setShares(CNR);
         testCO = await help.setTestCO();
         MINT = await shares.MINT();
+        WHITELISTER = await shares.WHITELISTER();
         await shares.grantRole(MINT, owner.address);
+        await shares.grantRole(WHITELISTER, owner.address);
         await testCO.approve(shares.address, 1000000000);
         await shares.setPeriodAndDelay(60, 10);
         await shares.issuanceOfShares(100);
@@ -349,7 +351,9 @@ describe("Test claimEarnings", function () {
         await testCO.transfer(shares.address, COAmount);
         await shares.calculateTokenDistribution(testCO.address);
         await shares.connect(buyer).claimEarnings(testCO.address, 0, buyer.address, [1, 2, 3, 4, 5]);
-        await shares.connect(buyer).claimEarnings(testCO.address, 0, buyer.address, [1, 2, 3, 4, 5]);
+        await expect(
+            shares.connect(buyer).claimEarnings(testCO.address, 0, buyer.address, [1, 2, 3, 4, 5])
+        ).to.be.revertedWith("Nothing to claim");
         let newBalance = (await testCO.balanceOf(buyer.address)).toNumber();
         expect(newBalance).to.be.equal(initialBalance + 5000000);
         let earningsLeft = (await shares.tokenPeriods(testCO.address, 0)).earningsAccountedFor.toNumber();
@@ -620,6 +624,8 @@ describe("Test token limitations", function () {
         CNR = await help.setCNR();
         shares = await setShares(CNR);
         MINT = await shares.MINT();
+        WHITELISTER = await shares.WHITELISTER();
+        await shares.grantRole(WHITELISTER, owner.address);
         await shares.grantRole(MINT, owner.address);
         testCO = await help.setTestCO();
         await testCO.connect(owner).approve(shares.address, 100000000000);
