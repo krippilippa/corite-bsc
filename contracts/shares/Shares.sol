@@ -64,6 +64,8 @@ contract Shares is Initializable, ERC721Upgradeable, WhitelistEnabledFor {
         uint newShareEarnings
     );
     event ChangeWhitelist(Whitelist old, Whitelist _new);
+    event BurnEnabled(bool enabled);
+    event DisableAdminForceback();
 
     function initialize(
         string memory _collectionName,
@@ -197,6 +199,7 @@ contract Shares is Initializable, ERC721Upgradeable, WhitelistEnabledFor {
 
     function setBurnEnabled(bool _enabled) external onlyRole(ADMIN) {
         burnEnabled = _enabled;
+        emit BurnEnabled(_enabled);
     }
 
     function claimEarnings(
@@ -327,6 +330,7 @@ contract Shares is Initializable, ERC721Upgradeable, WhitelistEnabledFor {
 
     function disableAdminForceBack() external onlyRole(ADMIN) {
         adminForceBackDisabled = true;
+        emit DisableAdminForceback();
     }
 
     function setNameAndSymbol(
