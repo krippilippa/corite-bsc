@@ -114,9 +114,10 @@ contract Shares is Initializable, ERC721Upgradeable, WhitelistEnabledFor {
         ClaimPeriod[] storage claimPeriods = tokenPeriods[_token];
         if (claimPeriods.length == 0) {
             claimPeriods.push();
-            claimPeriods[0].start = firstPeriodStart;
-            claimPeriods[0].startCap = supplyCap;
-            claimPeriods[0].startMaxTokenId = supplyCap + burnCount;
+            ClaimPeriod storage period = claimPeriods[0];
+            period.start = firstPeriodStart;
+            period.startCap = supplyCap;
+            period.startMaxTokenId = supplyCap + burnCount;
         }
 
         uint activePeriodIndex = claimPeriods.length - 1;
@@ -145,21 +146,18 @@ contract Shares is Initializable, ERC721Upgradeable, WhitelistEnabledFor {
         uint _periodIndex,
         address _token
     ) internal {
+        uint balance;
         if (_token == address(0)) {
-            uint balance = address(this).balance -
-                retroactiveTotals[address(0)];
-            _period.shareEarnings += uint128(
-                (balance - _period.earningsAccountedFor) / _period.startCap
-            );
-            _period.earningsAccountedFor = uint128(balance);
+            balance = address(this).balance - retroactiveTotals[address(0)];
         } else {
-            uint balance = IERC20(_token).balanceOf(address(this)) -
+            balance =
+                IERC20(_token).balanceOf(address(this)) -
                 retroactiveTotals[_token];
-            _period.shareEarnings += uint128(
-                (balance - _period.earningsAccountedFor) / _period.startCap
-            );
-            _period.earningsAccountedFor = uint128(balance);
         }
+        _period.shareEarnings += uint128(
+            (balance - _period.earningsAccountedFor) / _period.startCap
+        );
+        _period.earningsAccountedFor = uint128(balance);
         emit CalculateTokenDistribution(
             _token,
             _periodIndex,
