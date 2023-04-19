@@ -133,8 +133,8 @@ contract Shares is Initializable, ERC721Upgradeable, WhitelistEnabledFor {
             nextPeriod.startMaxTokenId = supplyCap + burnCount;
             nextPeriod.start =
                 activePeriod.start +
-                (block.timestamp - activePeriod.start) /
-                periodLength;
+                (((block.timestamp - activePeriod.start) / periodLength) *
+                    periodLength);
             retroactiveTotals[_token] += activePeriod.earningsAccountedFor;
             _distribution(nextPeriod, activePeriodIndex + 1, _token);
         }
