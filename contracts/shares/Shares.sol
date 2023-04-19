@@ -22,8 +22,8 @@ contract Shares is Initializable, ERC721Upgradeable, WhitelistEnabledFor {
     uint public burnCount;
 
     uint public firstPeriodStart;
-    uint public periodLength;
-    uint public flushDelay;
+    uint128 public periodLength;
+    uint128 public flushDelay;
 
     bool public adminForceBackDisabled;
     bool public burnEnabled;
@@ -35,8 +35,8 @@ contract Shares is Initializable, ERC721Upgradeable, WhitelistEnabledFor {
         uint start;
         uint startCap;
         uint startMaxTokenId;
-        uint shareEarnings;
-        uint earningsAccountedFor;
+        uint128 shareEarnings;
+        uint128 earningsAccountedFor;
         mapping(uint => uint) claimedPerShare;
     }
 
@@ -148,17 +148,17 @@ contract Shares is Initializable, ERC721Upgradeable, WhitelistEnabledFor {
         if (_token == address(0)) {
             uint balance = address(this).balance -
                 retroactiveTotals[address(0)];
-            _period.shareEarnings +=
-                (balance - _period.earningsAccountedFor) /
-                _period.startCap;
-            _period.earningsAccountedFor = balance;
+            _period.shareEarnings += uint128(
+                (balance - _period.earningsAccountedFor) / _period.startCap
+            );
+            _period.earningsAccountedFor = uint128(balance);
         } else {
             uint balance = IERC20(_token).balanceOf(address(this)) -
                 retroactiveTotals[_token];
-            _period.shareEarnings +=
-                (balance - _period.earningsAccountedFor) /
-                _period.startCap;
-            _period.earningsAccountedFor = balance;
+            _period.shareEarnings += uint128(
+                (balance - _period.earningsAccountedFor) / _period.startCap
+            );
+            _period.earningsAccountedFor = uint128(balance);
         }
         emit CalculateTokenDistribution(
             _token,
@@ -208,7 +208,7 @@ contract Shares is Initializable, ERC721Upgradeable, WhitelistEnabledFor {
         uint[] calldata _shareIds
     ) public {
         uint totalToGet = _totalToGet(_token, _claimPeriod, _owner, _shareIds);
-        IERC20(_token).transfer(_owner, totalToGet); // test if zero
+        IERC20(_token).transfer(_owner, totalToGet);
         emit EarningsClaimed(
             _owner,
             _token,
@@ -230,7 +230,7 @@ contract Shares is Initializable, ERC721Upgradeable, WhitelistEnabledFor {
             _owner,
             _shareIds
         );
-        (bool sent, ) = _owner.call{value: totalToGet}(""); // test if zero
+        (bool sent, ) = _owner.call{value: totalToGet}("");
         require(sent, "Failed to transfer native token");
         emit EarningsClaimed(
             _owner,
@@ -270,10 +270,11 @@ contract Shares is Initializable, ERC721Upgradeable, WhitelistEnabledFor {
                 period.claimedPerShare[share] = target;
             }
         }
+        require(totalToGet > 0, "Nothing to claim");
         if (_periodIndex < tokenPeriods[_token].length - 1) {
             retroactiveTotals[_token] -= totalToGet;
         }
-        period.earningsAccountedFor -= totalToGet;
+        period.earningsAccountedFor -= uint128(totalToGet);
     }
 
     function flush(
@@ -307,8 +308,8 @@ contract Shares is Initializable, ERC721Upgradeable, WhitelistEnabledFor {
     }
 
     function setPeriodAndDelay(
-        uint _periodLength,
-        uint _flushDelay
+        uint128 _periodLength,
+        uint128 _flushDelay
     ) public onlyRole(ADMIN) {
         require(firstPeriodStart == 0, "Contract already started");
         periodLength = _periodLength;
