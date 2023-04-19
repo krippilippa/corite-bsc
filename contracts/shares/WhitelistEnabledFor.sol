@@ -4,6 +4,8 @@ pragma solidity 0.8.19;
 import "./Whitelist.sol";
 
 abstract contract WhitelistEnabledFor is Whitelist {
+    bytes32 public constant ADMIN = keccak256("ADMIN");
+
     bool public transferWhiteListRequired;
     bool public claimWhiteListRequired;
     bool public transferBlocked;
