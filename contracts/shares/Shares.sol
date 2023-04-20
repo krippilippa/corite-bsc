@@ -87,7 +87,7 @@ contract Shares is Initializable, ERC721Upgradeable, WhitelistEnabledFor {
 
     receive() external payable {}
 
-    function issuanceOfShares(uint _nrToIssue) public onlyRole(ADMIN) {
+    function issuanceOfShares(uint _nrToIssue) external onlyRole(ADMIN) {
         require(
             supplyCap == circulatingSupply,
             "Can not issue more shares before minting existing ones"
@@ -105,7 +105,7 @@ contract Shares is Initializable, ERC721Upgradeable, WhitelistEnabledFor {
         );
     }
 
-    function calculateTokensDistribution(address[] calldata _tokens) public {
+    function calculateTokensDistribution(address[] calldata _tokens) external {
         for (uint256 index = 0; index < _tokens.length; index++) {
             calculateTokenDistribution(_tokens[index]);
         }
@@ -207,7 +207,7 @@ contract Shares is Initializable, ERC721Upgradeable, WhitelistEnabledFor {
         uint _claimPeriod,
         address _owner,
         uint[] calldata _shareIds
-    ) public {
+    ) external {
         uint totalToGet = _totalToGet(_token, _claimPeriod, _owner, _shareIds);
         IERC20(_token).transfer(_owner, totalToGet);
         emit EarningsClaimed(
@@ -224,7 +224,7 @@ contract Shares is Initializable, ERC721Upgradeable, WhitelistEnabledFor {
         uint _claimPeriod,
         address _owner,
         uint[] calldata _shareIds
-    ) public {
+    ) external {
         uint totalToGet = _totalToGet(
             address(0),
             _claimPeriod,
@@ -281,7 +281,7 @@ contract Shares is Initializable, ERC721Upgradeable, WhitelistEnabledFor {
     function flush(
         uint _periodIndex,
         address[] calldata _tokens
-    ) public onlyRole(ADMIN) {
+    ) external onlyRole(ADMIN) {
         for (uint256 index = 0; index < _tokens.length; index++) {
             _flush(_periodIndex, _tokens[index]);
         }
@@ -311,7 +311,7 @@ contract Shares is Initializable, ERC721Upgradeable, WhitelistEnabledFor {
     function setPeriodAndDelay(
         uint128 _periodLength,
         uint128 _flushDelay
-    ) public onlyRole(ADMIN) {
+    ) external onlyRole(ADMIN) {
         require(firstPeriodStart == 0, "Contract already started");
         periodLength = _periodLength;
         flushDelay = _flushDelay;
