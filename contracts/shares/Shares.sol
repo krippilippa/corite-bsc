@@ -94,7 +94,7 @@ contract Shares is Initializable, ERC721Upgradeable, WhitelistEnabledFor {
         );
         require(_nrToIssue > 0, "Can not issue zero shares");
 
-        if (supplyCap == 0) {
+        if (firstPeriodStart == 0) {
             firstPeriodStart = block.timestamp;
         }
         supplyCap += _nrToIssue;
