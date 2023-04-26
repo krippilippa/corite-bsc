@@ -312,9 +312,18 @@ contract Shares is Initializable, ERC721Upgradeable, WhitelistEnabledFor {
         uint128 _periodLength,
         uint128 _flushDelay
     ) external onlyRole(ADMIN) {
-        require(firstPeriodStart == 0, "Contract already started");
+        require(supplyCap == 0, "Contract already started");
         periodLength = _periodLength;
         flushDelay = _flushDelay;
+    }
+
+    function setFirstPeriodStart(uint _startTime) external onlyRole(ADMIN) {
+        require(supplyCap == 0, "Contract already started");
+        require(
+            _startTime <= block.timestamp,
+            "Can not start period in the future"
+        );
+        firstPeriodStart = _startTime;
     }
 
     function adminForceBackShares(
